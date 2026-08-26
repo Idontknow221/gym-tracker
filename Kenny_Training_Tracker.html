@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kenny Tracker">
+<title>Kenny Training Tracker</title>
+<style>
+:root{
+  --ink:#0C0D0E; --ink2:#1C1F22; --mid:#71777E; --soft:#9BA1A8;
+  --line:#E4E6E9; --bg:#F5F6F7; --card:#FFFFFF; --acc:#FF4A1C; --tint:#FFF1EB;
+}
+[data-theme="dark"]{
+  --ink:#F2F2F0; --ink2:#E4E4E1; --mid:#9B9F98; --soft:#6E726B;
+  --line:#2B2D28; --bg:#121310; --card:#1B1C18; --acc:#FF6B45; --tint:#2A1A12;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans CJK TC",sans-serif;
+  background:var(--bg); color:var(--ink); font-size:15px; line-height:1.5;
+  padding-bottom:64px; min-height:100vh;
+}
+.wrap{max-width:480px; margin:0 auto; padding:16px 16px 8px;}
+h1{font-size:20px; font-weight:800; margin:0 0 2px; letter-spacing:-.2px;}
+h2{font-size:16px; font-weight:800; margin:0 0 8px;}
+h3{font-size:13px; font-weight:700; color:var(--mid); margin:18px 0 8px; letter-spacing:.3px;}
+p{margin:4px 0;}
+.muted{color:var(--mid); font-size:13px;}
+.card{background:var(--card); border:0.5px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px;}
+.row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+.pill{display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:.4px;}
+.pill-acc{background:var(--tint); color:var(--acc);}
+.pill-mid{background:var(--bg); color:var(--mid); border:0.5px solid var(--line);}
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  border:0.5px solid var(--line); background:var(--card); color:var(--ink);
+  border-radius:10px; padding:12px 16px; font-size:15px; font-weight:700;
+  cursor:pointer; width:100%; -webkit-appearance:none; appearance:none;
+}
+.btn:active{transform:scale(0.98);}
+.btn-primary{background:var(--acc); color:#fff; border-color:var(--acc);}
+.btn-ghost{background:transparent;}
+.btn-sm{padding:8px 12px; font-size:13px; width:auto;}
+.btn-danger{color:#C4432B; border-color:#C4432B;}
+input[type=number],input[type=text],textarea{
+  width:100%; border:0.5px solid var(--line); background:var(--bg); color:var(--ink);
+  border-radius:8px; padding:10px 12px; font-size:16px; font-family:inherit;
+}
+textarea{resize:vertical; min-height:70px;}
+.stepper{display:flex; align-items:center; gap:3px;}
+.stepper input{text-align:center; font-weight:800; font-size:14px; padding:8px 2px; min-width:0;}
+.stepbtn{
+  width:28px; height:36px; border-radius:7px; border:0.5px solid var(--line);
+  background:var(--card); font-size:15px; font-weight:800; color:var(--ink);
+  flex-shrink:0; cursor:pointer; padding:0;
+}
+.stepbtn:active{background:var(--bg);}
+.rirbox input{text-align:center; font-weight:800; font-size:14px; padding:8px 2px; width:100%;}
+.exname{font-weight:800; font-size:16px;}
+.exmeta{font-size:12px; color:var(--soft); letter-spacing:.3px; margin-top:1px;}
+.setrow{
+  display:grid; grid-template-columns:22px 1fr 1fr 46px 44px; gap:5px; align-items:center;
+  padding:8px 0; border-top:0.5px solid var(--line);
+}
+.setrow:first-of-type{border-top:none;}
+.setnum{font-weight:800; color:var(--mid); font-size:13px; text-align:center;}
+.setlabel{font-size:9px; color:var(--soft); text-align:center; letter-spacing:.5px; margin-bottom:2px;}
+.check{
+  width:44px; height:44px; border-radius:9px; border:1.5px solid var(--line);
+  display:flex; align-items:center; justify-content:center; font-size:20px; cursor:pointer;
+  background:var(--card); color:var(--soft); flex-shrink:0;
+}
+.check.done{background:var(--acc); border-color:var(--acc); color:#fff;}
+.setrow.active{background:var(--tint); margin:0 -10px; padding:8px 10px; border-radius:8px; border-top:none;}
+.setrow.donerow{opacity:.5;}
+.progress-bar{height:6px; background:var(--line); border-radius:3px; overflow:hidden; margin:8px 0;}
+.progress-fill{height:100%; background:var(--acc); border-radius:3px; transition:width .2s;}
+.navbar.dim{opacity:.45;}
+.toast{
+  position:fixed; bottom:78px; left:50%; transform:translateX(-50%) translateY(10px);
+  background:var(--ink); color:var(--bg); padding:8px 16px; border-radius:20px;
+  font-size:13px; font-weight:700; z-index:80; opacity:0; transition:opacity .2s, transform .2s;
+  pointer-events:none; white-space:nowrap;
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+.lasttime{font-size:15px; font-weight:800; margin:2px 0; font-variant-numeric:tabular-nums;}
+.exlistrow{display:flex; align-items:center; gap:10px; padding:10px 0; border-top:0.5px solid var(--line);}
+.exlistrow:first-child{border-top:none;}
+.exlistrow.done{opacity:.45;}
+.exlistrow.current{background:var(--tint); margin:0 -10px; padding:10px; border-radius:8px; border-top:none;}
+.exdot{width:22px; height:22px; border-radius:50%; border:1.5px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800;}
+.exdot.done{background:var(--acc); border-color:var(--acc); color:#fff;}
+.exdot.current{border-color:var(--acc); color:var(--acc);}
+.navbar{
+  position:fixed; bottom:0; left:0; right:0; background:var(--card);
+  border-top:0.5px solid var(--line); display:flex; z-index:50;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.navitem{
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding:9px 0 7px; cursor:pointer; color:var(--soft); font-size:10px; font-weight:700;
+  letter-spacing:.3px;
+}
+.navitem.active{color:var(--acc);}
+.navicon{width:20px; height:20px; display:block; margin:0 auto;}
+.timer-overlay{
+  position:fixed; inset:0; background:rgba(12,13,14,0.92); z-index:100;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff;
+}
+.timer-num{font-size:64px; font-weight:800; letter-spacing:-1px; font-variant-numeric:tabular-nums;}
+.timer-label{font-size:13px; color:#B8BCC0; letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;}
+.timer-controls{display:flex; gap:10px; margin-top:24px;}
+.timer-btn{
+  padding:10px 18px; border-radius:10px; border:1px solid #3A3D40; background:transparent;
+  color:#fff; font-size:14px; font-weight:700; cursor:pointer;
+}
+.screen{display:none;}
+.screen.active{display:block;}
+.divider{height:1px; background:var(--line); margin:12px 0;}
+.empty{text-align:center; padding:30px 10px; color:var(--soft); font-size:13px;}
+.histitem{padding:10px 0; border-top:0.5px solid var(--line);}
+.histitem:first-child{border-top:none;}
+table.mini{width:100%; border-collapse:collapse; font-size:13px;}
+table.mini th{text-align:left; color:var(--soft); font-size:10px; font-weight:700; letter-spacing:.4px; padding:4px 6px; border-bottom:1px solid var(--line);}
+table.mini td{padding:6px 6px; border-bottom:0.5px solid var(--line);}
+.toggle{position:relative; width:44px; height:26px; border-radius:14px; background:var(--line); cursor:pointer; flex-shrink:0;}
+.toggle.on{background:var(--acc);}
+.toggle::after{content:''; position:absolute; top:2px; left:2px; width:22px; height:22px; border-radius:50%; background:#fff; transition:left .15s;}
+.toggle.on::after{left:20px;}
+.topbar{display:flex; align-items:center; gap:10px; margin-bottom:4px;}
+.back{font-size:20px; color:var(--mid); cursor:pointer; padding:2px 4px;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app"></div>
+
+<div class="navbar">
+  <div class="navitem" data-nav="home" role="button" aria-label="首頁"><svg class="navicon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>HOME</div>
+  <div class="navitem" data-nav="workout" role="button" aria-label="選擇訓練"><svg class="navicon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5l11 11M4 9l3-3 3 3M9 4l3 3M15 9l3-3 3 3M20 15l-3 3-3-3M15 20l-3-3"/></svg>WORKOUT</div>
+  <div class="navitem" data-nav="history" role="button" aria-label="歷史紀錄"><svg class="navicon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>HISTORY</div>
+  <div class="navitem" data-nav="progress" role="button" aria-label="進度"><svg class="navicon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16M7 15l3-4 3 2 4-6"/></svg>PROGRESS</div>
+  <div class="navitem" data-nav="more" role="button" aria-label="更多"><svg class="navicon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>MORE</div>
+</div>
+
+<script>
+function g(n,sets,reps,rir,rest,weighted,type,extra){ return Object.assign({n,sets,reps,rir,rest,weighted,type},extra||{}); }
+const HOME_DIFF = "難度不夠時依序：加次數→放慢節奏→加停頓→加大動作範圍→改單邊→縮短休息";
+
+const PROGRAM_GYM = {
+  1: {name:"Day 1 — 下半身A", exercises:[
+    g("Pogo Jump",3,"10","—",60,false,"reps"),
+    g("2步助跑跳",5,"3","—",90,false,"reps"),
+    g("Back Squat",4,"5",2,210,true,"reps",{main:true,inc:5}),
+    g("Bulgarian Split Squat",3,"10/邊",2,120,true,"reps"),
+    g("RDL",3,"8",2,120,true,"reps"),
+    g("Standing Calf Raise",4,"10",1,90,true,"reps"),
+    g("Spanish Squat",3,"30秒","—",60,false,"time")
+  ]},
+  2: {name:"Day 2 — 上半身A", exercises:[
+    g("Bench Press",4,"5",2,180,true,"reps",{main:true,inc:2.5}),
+    g("Pull-up",4,"6","1–2",150,true,"reps",{main:true,inc:2.5}),
+    g("Incline DB Press",3,"10",1,120,true,"reps"),
+    g("Chest-Supported Row",3,"12",1,120,true,"reps"),
+    g("Seated DB Press",3,"10","1–2",120,true,"reps"),
+    g("Lateral Raise",3,"15","0–1",90,true,"reps"),
+    g("Overhead Extension",3,"12",1,90,true,"reps")
+  ]},
+  3: {name:"Day 3 — 下半身B", exercises:[
+    g("CMJ",5,"3","—",120,false,"reps"),
+    g("Lateral Bound",3,"4/邊","—",120,false,"reps"),
+    g("Trap-bar Deadlift",4,"5",2,180,true,"reps",{main:true,inc:5}),
+    g("Hip Thrust",3,"10","1–2",120,true,"reps"),
+    g("Leg Press",3,"12",1,120,true,"reps"),
+    g("Leg Curl",3,"10",1,90,true,"reps"),
+    g("Seated Calf Raise",3,"12",1,90,true,"reps")
+  ]},
+  4: {name:"Day 4 — 上半身B", exercises:[
+    g("Pull-up Cluster",5,"3",2,120,true,"reps"),
+    g("Standing OHP",4,"6",2,150,true,"reps",{main:true,inc:2.5}),
+    g("Cable Row",3,"12",1,120,true,"reps"),
+    g("Lat Pulldown",3,"15","0–1",90,true,"reps"),
+    g("Face Pull",3,"15","0–1",60,true,"reps"),
+    g("Lateral Raise",3,"15","0–1",60,true,"reps"),
+    g("Incline DB Curl",3,"10",1,90,true,"reps"),
+    g("Pallof Press",2,"8–10/邊",1,60,true,"reps")
+  ]},
+  5: {name:"Day 5 — 選配", exercises:[
+    g("Lateral Raise",3,"18","0–1",60,true,"reps"),
+    g("Face Pull",3,"18","0–1",60,true,"reps"),
+    g("Fly",3,"15","0–1",60,true,"reps"),
+    g("Hammer Curl",3,"12","0–1",60,true,"reps"),
+    g("Rope Pushdown",3,"15","0–1",60,true,"reps")
+  ]}
+};
+
+const PROGRAM_HOME = {
+  1: {name:"Day 1 — 下半身A（居家）", exercises:[
+    g("Pogo Jump",3,"10","—",60,false,"reps"),
+    g("2步助跑跳",5,"3","—",90,false,"reps"),
+    g("Bulgarian Split Squat",4,"12/邊",2,120,true,"reps",{main:true,home:true,diffNote:HOME_DIFF}),
+    g("Goblet Squat",3,"15–20",1,120,true,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("Single-leg RDL",3,"10/邊",2,120,true,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("Single-leg Calf Raise",4,"15–20/邊",1,90,true,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("Spanish Squat（靠牆蹲）",3,"30秒","—",60,false,"time")
+  ]},
+  2: {name:"Day 2 — 上半身A（居家）", exercises:[
+    g("DB Floor Press",4,"10–12",1,150,true,"reps",{main:true,home:true,diffNote:HOME_DIFF}),
+    g("Inverted Row",3,"15","近力竭",150,false,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("Feet-elevated Push-up",3,"近力竭前1下",1,120,false,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("One-arm DB Row",3,"12/邊",1,120,true,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("DB Shoulder Press",3,"10–12","1–2",120,true,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("Lateral Raise",3,"15–20","0–1",90,true,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("Bench Dip",3,"15",1,90,false,"reps",{home:true,diffNote:HOME_DIFF})
+  ]},
+  3: {name:"Day 3 — 下半身B（居家）", exercises:[
+    g("跳上椅子／樓梯落下跳",5,"3","—",120,false,"reps"),
+    g("Lateral Bound",3,"4/邊","—",120,false,"reps"),
+    g("DB Deadlift",4,"12–15",1,150,true,"reps",{main:true,home:true,diffNote:HOME_DIFF}),
+    g("Single-leg Hip Thrust",3,"15/邊","1–2",120,true,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("Reverse Lunge",3,"12/邊",1,120,true,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("Sliding Leg Curl",3,"10–12",1,90,false,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("Seated Calf Raise（腿壓啞鈴）",3,"20",1,90,true,"reps",{home:true,diffNote:HOME_DIFF})
+  ]},
+  4: {name:"Day 4 — 上半身B（居家）", exercises:[
+    g("Pull-up 或 Inverted Row",5,"3或12",2,120,false,"reps"),
+    g("DB Shoulder Press",4,"8",2,150,true,"reps",{main:true,home:true,diffNote:HOME_DIFF}),
+    g("Bent-over DB Row",3,"12",1,120,true,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("Inverted Row",3,"15","0–1",90,false,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("Reverse Fly",3,"18","0–1",60,true,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("Lateral Raise",3,"15–20","0–1",60,true,"reps",{home:true,diffNote:HOME_DIFF}),
+    g("DB Curl",3,"12",1,90,true,"reps",{home:true,diffNote:HOME_DIFF})
+  ]},
+  5: PROGRAM_GYM[5]
+};
+
+let PROGRAM = PROGRAM_GYM;
+const GYM_MAIN = ["Back Squat","Bench Press","Trap-bar Deadlift","Standing OHP","Pull-up"];
+const HOME_MAIN = ["Bulgarian Split Squat","DB Floor Press","DB Deadlift","DB Shoulder Press"];
+
+let DB = {sessions:[], notes:[], bodyweight:[], settings:{theme:"light", mode:"gym"}};
+
+// 若不是在 Claude 對話框裡開啟（例如加到 iPhone 主畫面獨立執行），
+// window.storage 不存在，改用瀏覽器內建的 localStorage 當備援，行為對 App 其餘部分完全透明。
+if(!window.storage){
+  window.storage = {
+    get: async(k)=>{ const v = localStorage.getItem(k); return v===null ? null : {value:v}; },
+    set: async(k,v)=>{ localStorage.setItem(k,v); return {value:v}; }
+  };
+}
+let state = {screen:"home", currentDay:null, currentSession:null, exIndex:0, timerLeft:0, timerRunning:false, timerInterval:null};
+
+async function loadDB(){
+  try{ const r = await window.storage.get('kenny-db'); if(r && r.value) DB = JSON.parse(r.value); }catch(e){}
+  if(!DB.settings.mode) DB.settings.mode = 'gym';
+  applyTheme(); applyMode();
+}
+async function saveDB(){
+  try{ await window.storage.set('kenny-db', JSON.stringify(DB)); }catch(e){}
+}
+function applyTheme(){ document.body.setAttribute('data-theme', DB.settings.theme||'light'); }
+function applyMode(){ PROGRAM = DB.settings.mode==='home' ? PROGRAM_HOME : PROGRAM_GYM; }
+
+function progFor(mode){ return mode==='home' ? PROGRAM_HOME : PROGRAM_GYM; }
+function safeDay(mode,day){ const p=progFor(mode); return p[day] || PROGRAM_GYM[day]; }
+function fmtDate(d){ const dt=new Date(d); return (dt.getMonth()+1)+"/"+dt.getDate(); }
+function escapeHtml(str){
+  if(str===null || str===undefined) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function localISO(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function todayISO(){ return localISO(new Date()); }
+function weekdayStr(){ return ["週日","週一","週二","週三","週四","週五","週六"][new Date().getDay()]; }
+
+function nextSuggestedDay(){
+  const mainDays = DB.sessions.filter(s=>s.day>=1 && s.day<=4);
+  if(mainDays.length===0) return 1;
+  const last = mainDays[mainDays.length-1].day;
+  return last>=4 ? 1 : last+1;
+}
+
+function lastPerformance(exName, excludeSessionId){
+  for(let i=DB.sessions.length-1;i>=0;i--){
+    const s = DB.sessions[i];
+    if(excludeSessionId && s.id===excludeSessionId) continue;
+    const ex = s.exercises.find(e=>e.def.n===exName);
+    if(ex && ex.sets.some(st=>st.done)) return {date:s.date, sets:ex.sets.filter(st=>st.done)};
+  }
+  return null;
+}
+
+function suggestNextLoad(exDef){
+  const last = lastPerformance(exDef.n);
+  if(!last || !exDef.main) return null;
+  const targetReps = parseInt(exDef.reps);
+  const allHitTop = last.sets.length>=exDef.sets && last.sets.every(s=>s.reps>=targetReps);
+  if(exDef.home){
+    if(allHitTop) return {suggest:true, mode:'home', reason:"上次全數達標次數上限 → 該換下一個難度技巧了", note:exDef.diffNote};
+    return {suggest:false};
+  }
+  if(allHitTop){
+    const w = Math.max(...last.sets.map(s=>s.weight||0));
+    return {suggest:true, mode:'gym', newWeight:(w+exDef.inc), reason:"上次全數達標次數上限 → 建議加重"};
+  }
+  return {suggest:false};
+}
+
+function render(){
+  const app = document.getElementById('app');
+  document.querySelectorAll('.navitem').forEach(n=>n.classList.toggle('active', n.dataset.nav===state.screen));
+  const navbar = document.querySelector('.navbar');
+  if(navbar) navbar.classList.toggle('dim', state.screen==='exercise');
+  if(state.screen==='home') app.innerHTML = renderHome();
+  else if(state.screen==='workout') app.innerHTML = renderWorkoutPicker();
+  else if(state.screen==='today') app.innerHTML = renderToday();
+  else if(state.screen==='exercise') app.innerHTML = renderExercise();
+  else if(state.screen==='complete') app.innerHTML = renderComplete();
+  else if(state.screen==='history') app.innerHTML = renderHistory();
+  else if(state.screen==='sessionDetail') app.innerHTML = renderSessionDetail();
+  else if(state.screen==='progress') app.innerHTML = renderProgress();
+  else if(state.screen==='more') app.innerHTML = renderMore();
+  bindEvents();
+}
+
+function renderHome(){
+  const sug = nextSuggestedDay();
+  const last = DB.sessions.length ? DB.sessions[DB.sessions.length-1] : null;
+  const isHome = DB.settings.mode==='home';
+  const sevenDaysAgo = localISO(new Date(Date.now()-7*86400000));
+  const recentCount = DB.sessions.filter(s=>s.date>=sevenDaysAgo).length;
+  return `
+    <div class="row" style="margin-bottom:4px">
+      <h3 style="margin:0">TODAY</h3>
+      <div class="row" style="gap:6px">
+        <span class="muted" style="font-size:11px">${isHome?'居家':'健身房'}</span>
+        <div class="toggle ${isHome?'on':''}" data-action="toggleMode"></div>
+      </div>
+    </div>
+    <div class="card" style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; margin-bottom:6px">
+      <span class="muted" style="font-size:12px">近 7 天訓練</span>
+      <span style="font-weight:800; font-size:15px">${recentCount} 次</span>
+    </div>
+    <div class="card">
+      <p class="muted">${todayISO()} · ${weekdayStr()}</p>
+      <h1>建議：${PROGRAM[sug].name}</h1>
+      <p class="muted">${PROGRAM[sug].exercises.length} 個動作</p>
+      <div style="height:10px"></div>
+      <button class="btn btn-primary" data-action="startDay" data-day="${sug}">開始今天訓練</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-ghost btn-sm" data-action="goWorkout">選別的 Day</button>
+    </div>
+    ${last ? `
+    <h3>上次訓練</h3>
+    <div class="card" data-action="viewSession" data-id="${last.id}" style="cursor:pointer">
+      <div class="row"><span class="exname">${progFor(last.mode)[last.day].name}</span><span class="muted">${fmtDate(last.date)}</span></div>
+      <p class="muted">${last.exercises.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0)} 組已完成</p>
+    </div>` : `<h3>還沒有訓練紀錄</h3><div class="empty">No data yet.</div>`}
+  `;
+}
+
+function renderWorkoutPicker(){
+  return `
+    <h1>選擇今天要練的 Day</h1>
+    <div style="height:10px"></div>
+    ${[1,2,3,4,5].map(d=>`
+      <div class="card" data-action="startDay" data-day="${d}" style="cursor:pointer">
+        <div class="row">
+          <div>
+            <div class="exname">${PROGRAM[d].name}</div>
+            <div class="muted">${PROGRAM[d].exercises.length} 個動作</div>
+          </div>
+          <span style="color:var(--soft)">›</span>
+        </div>
+      </div>
+    `).join('')}
+    <h3>補登過去的訓練</h3>
+    <p class="muted" style="font-size:12px">忘記記錄、事後補打的訓練，不會跳出休息計時器</p>
+    <div style="height:6px"></div>
+    ${[1,2,3,4,5].map(d=>`
+      <button class="btn btn-ghost btn-sm" data-action="startBackfill" data-day="${d}" style="width:100%; margin-bottom:6px; text-align:left">補登 ${PROGRAM[d].name}</button>
+    `).join('')}
+  `;
+}
+
+function renderToday(){
+  const day = state.currentDay;
+  const sess = state.currentSession;
+  const totalSets = sess.exercises.reduce((a,e)=>a+e.sets.length,0);
+  const doneSets = sess.exercises.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0);
+  return `
+    <div class="topbar"><span class="back" data-action="backHome">‹</span><h1>${PROGRAM[day].name}</h1></div>
+    ${sess.backfill ? `
+    <div class="card" style="background:var(--tint); border-color:var(--acc)">
+      <p style="color:var(--acc); font-weight:700; font-size:12px; margin:0 0 6px; letter-spacing:.3px">補登模式 · 不會自動跳休息計時器</p>
+      <div class="row" style="gap:8px">
+        <span class="muted" style="font-size:13px">訓練日期</span>
+        <input type="date" id="backfillDate" value="${sess.date}" style="width:auto; flex:0 0 auto">
+      </div>
+    </div>` : ''}
+    <p class="muted">${doneSets} / ${totalSets} sets</p>
+    <div class="progress-bar"><div class="progress-fill" style="width:${totalSets?(doneSets/totalSets*100):0}%"></div></div>
+    <div style="height:6px"></div>
+    <div class="card">
+      ${(()=>{ const firstIncomplete = sess.exercises.findIndex(ex=>ex.sets.some(s=>!s.done)); return sess.exercises.map((ex,i)=>{
+        const def = ex.def;
+        const done = ex.sets.filter(s=>s.done).length;
+        const allDone = done===ex.sets.length;
+        const isCurrent = i===firstIncomplete;
+        return `
+        <div class="exlistrow ${allDone?'done':''} ${isCurrent?'current':''}" data-action="openExercise" data-idx="${i}" style="cursor:pointer">
+          <div class="exdot ${allDone?'done':''} ${isCurrent?'current':''}">${allDone?'✓':(isCurrent?'›':(i+1))}</div>
+          <div style="flex:1">
+            <div class="exname" style="font-size:14px">${def.n}</div>
+            <div class="exmeta">${def.sets} × ${def.reps} · RIR ${def.rir}</div>
+          </div>
+          <span class="pill ${done>0?'pill-acc':'pill-mid'}">${done}/${def.sets}</span>
+        </div>`;
+      }).join(''); })()}
+    </div>
+    <button class="btn btn-primary" data-action="finishWorkout">完成訓練</button>
+  `;
+}
+
+function smartDefault(ex, si, field){
+  // carry forward from an earlier completed set in THIS session first
+  for(let j=si-1;j>=0;j--){ if(ex.sets[j].done && ex.sets[j][field]!==null) return ex.sets[j][field]; }
+  return null;
+}
+
+function renderExercise(){
+  const sess = state.currentSession;
+  const ex = sess.exercises[state.exIndex];
+  const def = ex.def;
+  const last = lastPerformance(def.n, sess.id);
+  const suggestion = suggestNextLoad(def);
+  const firstUndone = ex.sets.findIndex(s=>!s.done);
+  return `
+    <div class="topbar"><span class="back" data-action="backToday">‹</span><h1>${def.n}</h1></div>
+    <p class="exmeta">${def.sets} × ${def.reps} · Target RIR ${def.rir} · Rest ${def.rest>=60?(def.rest/60)+'min':def.rest+'s'}</p>
+    ${last ? `
+    <div class="card" style="border-color:var(--acc)">
+      <p style="font-size:10px; letter-spacing:.5px; color:var(--acc); font-weight:800; margin-bottom:6px">LAST TIME · ${fmtDate(last.date)}</p>
+      ${last.sets.map(s=>`<p class="lasttime">${def.weighted?(s.weight+'kg × '):''}${s.reps}${def.type==='time'?'秒':'下'}${def.weighted?` <span class="muted" style="font-size:12px; font-weight:400">RIR ${s.rir}</span>`:''}</p>`).join('')}
+    </div>` : `<p class="muted" style="font-size:12px">No previous performance.</p>`}
+    ${suggestion && suggestion.suggest ? (suggestion.mode==='home' ?
+      `<div class="card" style="background:var(--tint); border-color:var(--acc)"><p style="color:var(--acc); font-weight:700; font-size:13px; margin:0 0 4px">${suggestion.reason}</p><p style="font-size:12px; color:var(--ink2); margin:0">${suggestion.note}</p></div>`
+      : `<div class="card" style="background:var(--tint); border-color:var(--acc)"><p style="color:var(--acc); font-weight:700; font-size:13px; margin:0">${suggestion.reason} → 建議 ${suggestion.newWeight}kg</p></div>`
+    ) : ''}
+    <div style="height:8px"></div>
+    <div class="card">
+      ${ex.sets.map((s,si)=>{
+        const isActive = si===firstUndone;
+        const wDefault = s.weight!==null ? s.weight : (smartDefault(ex,si,'weight') ?? (last && last.sets[si] ? last.sets[si].weight : (last && last.sets[0] ? last.sets[0].weight : '')));
+        const rDefault = s.reps!==null ? s.reps : (smartDefault(ex,si,'reps') ?? (last && last.sets[si] ? last.sets[si].reps : (last && last.sets[0] ? last.sets[0].reps : '')));
+        return `
+        <div class="setrow ${isActive?'active':''} ${s.done?'donerow':''}">
+          <div class="setnum">${si+1}</div>
+          ${def.weighted ? `
+          <div><div class="setlabel">KG</div>
+            <div class="stepper">
+              <button class="stepbtn" data-action="step" data-si="${si}" data-field="weight" data-delta="-2.5" type="button">−</button>
+              <input type="number" inputmode="decimal" value="${wDefault}" data-setfield="weight" data-si="${si}" placeholder="0" ${s.done?'disabled':''}>
+              <button class="stepbtn" data-action="step" data-si="${si}" data-field="weight" data-delta="2.5" type="button">+</button>
+            </div>
+          </div>` : `<div></div>`}
+          <div><div class="setlabel">${def.type==='time'?'SEC':'REPS'}</div>
+            <div class="stepper">
+              <button class="stepbtn" data-action="step" data-si="${si}" data-field="reps" data-delta="-1" type="button">−</button>
+              <input type="number" inputmode="numeric" value="${rDefault}" data-setfield="reps" data-si="${si}" placeholder="0" ${s.done?'disabled':''}>
+              <button class="stepbtn" data-action="step" data-si="${si}" data-field="reps" data-delta="1" type="button">+</button>
+            </div>
+          </div>
+          ${def.type!=='time' ? `
+          <div class="rirbox"><div class="setlabel">RIR</div>
+            <input type="number" inputmode="numeric" value="${s.rir!==null&&s.rir!==undefined&&s.rir!==''?s.rir:''}" data-setfield="rir" data-si="${si}" placeholder="-" ${s.done?'disabled':''}>
+          </div>` : `<div></div>`}
+          <div class="check ${s.done?'done':''}" data-action="toggleSet" data-si="${si}">${s.done?'✓':''}</div>
+        </div>
+      `;}).join('')}
+    </div>
+    <button class="btn btn-ghost" data-action="prevOrNextExercise" data-dir="-1" ${state.exIndex===0?'style="visibility:hidden"':''}>‹ 上一個動作</button>
+    <div style="height:6px"></div>
+    <button class="btn btn-primary" data-action="prevOrNextExercise" data-dir="1">${state.exIndex===sess.exercises.length-1?'回到今天課表':'下一個動作 ›'}</button>
+  `;
+}
+
+function renderComplete(){
+  const sess = state.currentSession;
+  const totalSets = sess.exercises.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0);
+  const rirVals = sess.exercises.flatMap(e=>e.sets.filter(s=>s.done && s.rir!==null && s.rir!=='').map(s=>Number(s.rir)));
+  const avgRir = rirVals.length ? (rirVals.reduce((a,b)=>a+b,0)/rirVals.length).toFixed(1) : '—';
+  const volume = sess.exercises.reduce((a,e)=>a+e.sets.filter(s=>s.done&&e.def.weighted).reduce((b,s)=>b+(s.weight||0)*(s.reps||0),0),0);
+  const newPRs = [];
+  sess.exercises.forEach(e=>{
+    if(!e.def.weighted) return;
+    const doneSets = e.sets.filter(s=>s.done && s.weight!==null);
+    if(doneSets.length===0) return;
+    const priorSets = DB.sessions.flatMap(s=>{
+      const ex = s.exercises.find(x=>x.def.n===e.def.n);
+      return ex ? ex.sets.filter(x=>x.done && x.weight!==null) : [];
+    });
+    if(priorSets.length===0) return;
+    const priorMax = Math.max(...priorSets.map(x=>x.weight));
+    const thisMax = Math.max(...doneSets.map(x=>x.weight));
+    if(thisMax > priorMax) newPRs.push({name:e.def.n, weight:thisMax, prior:priorMax});
+  });
+  return `
+    <div style="text-align:center; padding:20px 0 10px">
+      <div style="font-size:40px">✓</div>
+      <h1>WORKOUT COMPLETE</h1>
+      <p class="muted">${progFor(sess.mode)[sess.day].name}</p>
+    </div>
+    ${newPRs.length ? `
+    <div class="card" style="background:var(--tint); border-color:var(--acc)">
+      <p style="font-size:10px; letter-spacing:.5px; color:var(--acc); font-weight:800; margin-bottom:6px">NEW PERSONAL RECORD</p>
+      ${newPRs.map(p=>`<p style="margin:3px 0; font-weight:800; font-size:14px">${p.name} — ${p.weight}kg <span class="muted" style="font-weight:400; font-size:12px">(前次 ${p.prior}kg)</span></p>`).join('')}
+    </div>` : ''}
+    <div class="card">
+      <div class="row" style="padding:6px 0"><span class="muted">Exercises</span><span style="font-weight:800">${sess.exercises.length}</span></div>
+      <div class="divider"></div>
+      <div class="row" style="padding:6px 0"><span class="muted">Sets Completed</span><span style="font-weight:800">${totalSets}</span></div>
+      <div class="divider"></div>
+      <div class="row" style="padding:6px 0"><span class="muted">Total Volume</span><span style="font-weight:800">${volume>0?Math.round(volume)+' kg':'—'}</span></div>
+      <div class="divider"></div>
+      <div class="row" style="padding:6px 0"><span class="muted">Average RIR</span><span style="font-weight:800">${avgRir}</span></div>
+    </div>
+    <h3>NOTES（選填）</h3>
+    <div class="card">
+      <textarea id="sessionNote" placeholder="睡眠、精神、疼痛、技術問題...">${escapeHtml(sess.note||'')}</textarea>
+    </div>
+    <button class="btn btn-primary" data-action="saveAndFinish">儲存並回首頁</button>
+  `;
+}
+
+function dateLabel(d){
+  const today = todayISO();
+  const yest = localISO(new Date(Date.now()-86400000));
+  if(d===today) return '今天';
+  if(d===yest) return '昨天';
+  return fmtDate(d);
+}
+
+function renderHistory(){
+  if(DB.sessions.length===0) return `<h1>HISTORY</h1><div class="empty">No data yet.</div>`;
+  const rev = [...DB.sessions].reverse();
+  let lastLabel = null;
+  let html = '';
+  rev.forEach(s=>{
+    const label = dateLabel(s.date);
+    if(label!==lastLabel){ html += `<h3>${label.toUpperCase()}</h3>`; lastLabel = label; }
+    const sets = s.exercises.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0);
+    html += `
+      <div class="card" data-action="viewSession" data-id="${s.id}" style="cursor:pointer; margin-bottom:8px">
+        <div class="row">
+          <div>
+            <div class="exname">${progFor(s.mode)[s.day].name}${s.backfill?' <span class="pill pill-mid" style="font-size:9px">補登</span>':''}</div>
+            <div class="muted">${s.mode==='home'?'居家':'健身房'}</div>
+          </div>
+          <span class="muted">${sets} sets</span>
+        </div>
+      </div>`;
+  });
+  return `<h1>HISTORY</h1>${html}`;
+}
+
+function renderSessionDetail(){
+  const s = DB.sessions.find(x=>x.id===state.viewingId);
+  if(!s) return `<div class="empty">Not found.</div>`;
+  return `
+    <div class="topbar"><span class="back" data-action="backHistory">‹</span><h1>${progFor(s.mode)[s.day].name}</h1></div>
+    <p class="muted">${s.date}</p>
+    ${s.exercises.map(e=>{
+      const done = e.sets.filter(x=>x.done);
+      if(done.length===0) return '';
+      return `
+      <div class="card">
+        <div class="exname" style="margin-bottom:6px">${e.def.n}</div>
+        ${done.map(x=>`<p style="margin:2px 0; font-size:13px">${e.def.weighted?(x.weight+'kg × '):''}${x.reps}${e.def.type==='time'?'秒':'下'}${e.def.weighted?' · RIR '+x.rir:''}</p>`).join('')}
+      </div>`;
+    }).join('')}
+    ${s.note ? `<h3>NOTES</h3><div class="card"><p style="font-size:13px">${escapeHtml(s.note)}</p></div>` : ''}
+  `;
+}
+
+function estOneRM(w,r){ if(!w||!r) return 0; return Math.round(w*(1+r/30)); }
+
+function sparkline(points){
+  if(points.length<2) return '';
+  const w=300, h=44;
+  const vals = points.map(p=>p);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const range = (max-min) || 1;
+  const stepX = w/(points.length-1);
+  const coords = points.map((v,i)=>{
+    const x = i*stepX;
+    const y = h - ((v-min)/range)*(h-6) - 3;
+    return x.toFixed(1)+','+y.toFixed(1);
+  }).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none" style="display:block; margin:8px 0 4px">
+    <polyline points="${coords}" fill="none" stroke="var(--acc)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+function exerciseProgressCard(name){
+  const bySession = DB.sessions.map(s=>{
+    const ex = s.exercises.find(e=>e.def.n===name);
+    if(!ex) return null;
+    const done = ex.sets.filter(x=>x.done && x.weight!==null);
+    if(done.length===0) return null;
+    return { date:s.date, top1rm: Math.max(...done.map(x=>estOneRM(x.weight,x.reps))), sets:done };
+  }).filter(Boolean);
+  if(bySession.length===0){
+    return `<div class="card"><div class="exname">${name}</div><p class="muted" style="font-size:12px">No data yet.</p></div>`;
+  }
+  const allSets = bySession.flatMap(b=>b.sets.map(s=>({...s,date:b.date})));
+  const heaviest = Math.max(...allSets.map(x=>x.weight||0));
+  const best1rm = Math.max(...bySession.map(b=>b.top1rm));
+  const recent = allSets.slice(-5);
+  const trend = bySession.map(b=>b.top1rm);
+  return `
+    <div class="card">
+      <div class="exname" style="margin-bottom:2px">${name}</div>
+      ${sparkline(trend)}
+      <div class="row" style="font-size:13px"><span class="muted">Heaviest</span><span style="font-weight:800">${heaviest} kg</span></div>
+      <div class="row" style="font-size:13px"><span class="muted">Est. 1RM</span><span style="font-weight:800">${best1rm} kg</span></div>
+      <div class="divider"></div>
+      <table class="mini"><tr><th>DATE</th><th>WEIGHT</th><th>REPS</th></tr>
+      ${recent.map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${x.weight}kg</td><td>${x.reps}</td></tr>`).join('')}
+      </table>
+    </div>`;
+}
+
+function renderProgress(){
+  const mainLifts = DB.settings.mode==='home' ? HOME_MAIN : GYM_MAIN;
+  const allNames = new Set();
+  DB.sessions.forEach(s=>s.exercises.forEach(e=>{ if(e.def.weighted && e.sets.some(x=>x.done)) allNames.add(e.def.n); }));
+  const others = [...allNames].filter(n=>!mainLifts.includes(n));
+
+  let html = mainLifts.map(exerciseProgressCard).join('');
+  if(others.length){
+    html += `<h3 style="margin-top:16px">其他有紀錄的動作</h3>`;
+    html += others.map(exerciseProgressCard).join('');
+  }
+  return `<h1>PROGRESS</h1><p class="muted">${DB.settings.mode==='home'?'居家版':'健身房版'}主要動作與所有有紀錄的其他動作，趨勢線與數字全部來自你實際記錄的組數</p><div style="height:6px"></div>${html}`;
+}
+
+function renderMore(){
+  const dark = DB.settings.theme==='dark';
+  return `
+    <h1>MORE</h1>
+    <h3>訓練模式</h3>
+    <div class="card row">
+      <span>${DB.settings.mode==='home'?'居家版':'健身房版'}</span>
+      <div class="toggle ${DB.settings.mode==='home'?'on':''}" data-action="toggleMode"></div>
+    </div>
+    <h3>外觀</h3>
+    <div class="card row">
+      <span>Dark Mode</span>
+      <div class="toggle ${dark?'on':''}" data-action="toggleTheme"></div>
+    </div>
+    <h3>體重紀錄</h3>
+    <div class="card">
+      <div style="display:flex; gap:8px">
+        <input type="number" inputmode="decimal" id="bwInput" placeholder="kg">
+        <button class="btn btn-sm" data-action="logBW">記錄</button>
+      </div>
+      ${DB.bodyweight.length ? `<div style="height:8px"></div><table class="mini"><tr><th>DATE</th><th>KG</th></tr>${[...DB.bodyweight].reverse().slice(0,8).map(b=>`<tr><td>${fmtDate(b.date)}</td><td>${b.weight}</td></tr>`).join('')}</table>` : `<p class="muted" style="font-size:12px; margin-top:8px">No data yet.</p>`}
+    </div>
+    <h3>資料備份</h3>
+    <div class="card">
+      <button class="btn btn-sm" data-action="exportData">Export JSON</button>
+      <div style="height:8px"></div>
+      <textarea id="exportBox" placeholder="Export 會顯示在這裡，複製起來就是備份" style="font-size:11px; font-family:monospace"></textarea>
+      <div style="height:8px"></div>
+      <textarea id="importBox" placeholder="貼上之前備份的 JSON 到這裡"></textarea>
+      <div style="height:8px"></div>
+      <button class="btn btn-sm" data-action="importData">Import</button>
+    </div>
+    <h3>危險區</h3>
+    <div class="card">
+      <button class="btn btn-danger btn-sm" data-action="resetData">清除所有資料</button>
+    </div>
+    <p class="muted" style="text-align:center; font-size:11px; margin-top:20px">Kenny Training Tracker · Source: PDF Program v1.0</p>
+  `;
+}
+
+function syncSetFieldsFromDOM(si){
+  const ex = state.currentSession.exercises[state.exIndex];
+  ['weight','reps','rir'].forEach(field=>{
+    const el = document.querySelector(`[data-setfield="${field}"][data-si="${si}"]`);
+    if(el) ex.sets[si][field] = el.value===''?null:Number(el.value);
+  });
+}
+function showToast(msg){
+  let t = document.getElementById('appToast');
+  if(!t){ t=document.createElement('div'); t.id='appToast'; t.className='toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 1200);
+}
+function newSession(day, isBackfill){
+  return {
+    id: 'S'+Date.now(),
+    day: day,
+    mode: DB.settings.mode,
+    date: todayISO(),
+    note: '',
+    backfill: !!isBackfill,
+    exercises: PROGRAM[day].exercises.map(def=>({
+      def: def,
+      sets: Array.from({length:def.sets}, ()=>({weight:null,reps:null,rir:def.type==='time'?null:'',done:false}))
+    }))
+  };
+}
+
+function bindEvents(){
+  document.querySelectorAll('[data-action]').forEach(el=>{
+    el.onclick = (e)=>{
+      const act = el.dataset.action;
+      if(act==='startDay'){ state.currentDay=Number(el.dataset.day); state.currentSession=newSession(state.currentDay,false); state.exIndex=0; state.screen='today'; render(); }
+      else if(act==='startBackfill'){ state.currentDay=Number(el.dataset.day); state.currentSession=newSession(state.currentDay,true); state.exIndex=0; state.screen='today'; render(); }
+      else if(act==='goWorkout'){ state.screen='workout'; render(); }
+      else if(act==='backHome'){ state.screen='home'; render(); }
+      else if(act==='openExercise'){ state.exIndex=Number(el.dataset.idx); state.screen='exercise'; render(); }
+      else if(act==='backToday'){ state.screen='today'; render(); }
+      else if(act==='prevOrNextExercise'){
+        const dir = Number(el.dataset.dir);
+        if(dir===1 && state.exIndex===state.currentSession.exercises.length-1){ state.screen='today'; }
+        else { state.exIndex = Math.max(0, Math.min(state.currentSession.exercises.length-1, state.exIndex+dir)); state.screen='exercise'; }
+        render();
+      }
+      else if(act==='toggleSet'){
+        const si = Number(el.dataset.si);
+        const ex = state.currentSession.exercises[state.exIndex];
+        const s = ex.sets[si];
+        if(!s.done){
+          syncSetFieldsFromDOM(si);
+          const wMissing = ex.def.weighted && (s.weight===null || s.weight===undefined);
+          const rMissing = (s.reps===null || s.reps===undefined);
+          if(wMissing || rMissing){ alert('請先輸入重量與次數'); return; }
+          if((s.weight!==null && s.weight<0) || (s.reps!==null && s.reps<0)){ alert('重量或次數不能是負數'); return; }
+          s.done = true;
+          if(navigator.vibrate) navigator.vibrate(15);
+          showToast('已儲存');
+          if(!state.currentSession.backfill) startRestTimer(ex.def.rest);
+        } else { s.done = false; }
+        render();
+      }
+      else if(act==='step'){
+        const si = Number(el.dataset.si), field = el.dataset.field, delta = Number(el.dataset.delta);
+        const input = document.querySelector(`[data-setfield="${field}"][data-si="${si}"]`);
+        if(!input || input.disabled) return;
+        const cur = input.value===''?0:Number(input.value);
+        let next = cur + delta;
+        if(next<0) next=0;
+        if(field==='weight') next = Math.round(next*10)/10;
+        input.value = next;
+        syncSetFieldsFromDOM(si);
+      }
+      else if(act==='finishWorkout'){ state.screen='complete'; render(); }
+      else if(act==='saveAndFinish'){
+        const note = document.getElementById('sessionNote').value;
+        state.currentSession.note = note;
+        DB.sessions.push(state.currentSession);
+        DB.sessions.sort((a,b)=> a.date===b.date ? (a.id<b.id?-1:1) : (a.date<b.date?-1:1));
+        saveDB();
+        state.currentSession=null; state.screen='home'; render();
+      }
+      else if(act==='viewSession'){ state.viewingId = el.dataset.id; state.screen='sessionDetail'; render(); }
+      else if(act==='backHistory'){ state.screen='history'; render(); }
+      else if(act==='toggleTheme'){ DB.settings.theme = DB.settings.theme==='dark'?'light':'dark'; applyTheme(); saveDB(); render(); }
+      else if(act==='toggleMode'){
+        if(state.currentSession){ alert('請先完成或離開目前訓練，再切換健身房／居家模式'); return; }
+        DB.settings.mode = DB.settings.mode==='home'?'gym':'home';
+        applyMode(); saveDB(); render();
+      }
+      else if(act==='logBW'){
+        const v = Number(document.getElementById('bwInput').value);
+        if(!v){ alert('請輸入體重'); return; }
+        DB.bodyweight.push({date:todayISO(), weight:v}); saveDB(); render();
+      }
+      else if(act==='exportData'){ document.getElementById('exportBox').value = JSON.stringify(DB, null, 2); }
+      else if(act==='importData'){
+        try{
+          const parsed = JSON.parse(document.getElementById('importBox').value);
+          if(!parsed || typeof parsed!=='object' || !Array.isArray(parsed.sessions)){
+            alert('Import failed：JSON 缺少必要的 sessions 欄位，資料未變更');
+            return;
+          }
+          if(!Array.isArray(parsed.bodyweight)) parsed.bodyweight = [];
+          if(!Array.isArray(parsed.notes)) parsed.notes = [];
+          if(!parsed.settings || typeof parsed.settings!=='object') parsed.settings = {theme:'light', mode:'gym'};
+          DB = parsed; saveDB(); applyTheme(); applyMode(); render(); alert('匯入完成');
+        }
+        catch(err){ alert('JSON 格式錯誤，匯入失敗，資料未變更'); }
+      }
+      else if(act==='resetData'){
+        if(confirm('確定要清除所有訓練紀錄嗎？此動作無法復原。')){
+          DB = {sessions:[], notes:[], bodyweight:[], settings:DB.settings};
+          saveDB(); render();
+        }
+      }
+    };
+  });
+  document.querySelectorAll('[data-setfield]').forEach(el=>{
+    el.oninput = ()=>{
+      const si = Number(el.dataset.si);
+      const field = el.dataset.setfield;
+      const ex = state.currentSession.exercises[state.exIndex];
+      ex.sets[si][field] = el.value===''?null:Number(el.value);
+    };
+  });
+  const bfDate = document.getElementById('backfillDate');
+  if(bfDate) bfDate.onchange = ()=>{ state.currentSession.date = bfDate.value; };
+  document.querySelectorAll('.navitem').forEach(el=>{
+    el.onclick = ()=>{
+      const nav = el.dataset.nav;
+      if(nav==='workout' && state.currentSession){ state.screen='today'; }
+      else { state.screen = nav; }
+      render();
+    };
+  });
+}
+
+function startRestTimer(seconds){
+  state.timerLeft = seconds;
+  const overlay = document.createElement('div');
+  overlay.className = 'timer-overlay';
+  overlay.id = 'timerOverlay';
+  overlay.innerHTML = `
+    <div class="timer-label">REST</div>
+    <div class="timer-num" id="timerNum">${fmtTime(state.timerLeft)}</div>
+    <div class="timer-controls">
+      <button class="timer-btn" id="tMinus">-30s</button>
+      <button class="timer-btn" id="tSkip">Skip</button>
+      <button class="timer-btn" id="tPlus">+30s</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('tMinus').onclick = ()=>{ state.timerLeft=Math.max(0,state.timerLeft-30); updateTimerDisplay(); };
+  document.getElementById('tPlus').onclick = ()=>{ state.timerLeft+=30; updateTimerDisplay(); };
+  document.getElementById('tSkip').onclick = closeTimer;
+  state.timerInterval = setInterval(()=>{
+    state.timerLeft--;
+    if(state.timerLeft<=0){ closeTimer(); if(navigator.vibrate) navigator.vibrate(200); return; }
+    updateTimerDisplay();
+  },1000);
+}
+function updateTimerDisplay(){ const n=document.getElementById('timerNum'); if(n) n.textContent = fmtTime(state.timerLeft); }
+function fmtTime(s){ const m=Math.floor(s/60), sec=s%60; return (m<10?'0':'')+m+':'+(sec<10?'0':'')+sec; }
+function closeTimer(){ clearInterval(state.timerInterval); const o=document.getElementById('timerOverlay'); if(o) o.remove(); }
+
+loadDB().then(render);
+</script>
+</body>
+</html>
