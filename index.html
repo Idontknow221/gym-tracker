@@ -1276,7 +1276,8 @@ function exerciseProgressCard(name){
     if(!ex) return null;
     const done = ex.sets.filter(x=>x.done && x.weight!==null);
     if(done.length===0) return null;
-    return { date:s.date, top1rm: Math.max(...done.map(x=>estOneRM(x.weight,x.reps))), sets:done };
+    const volume = done.reduce((a,x)=>a+(x.weight*x.reps),0);
+    return { date:s.date, top1rm: Math.max(...done.map(x=>estOneRM(x.weight,x.reps))), sets:done, volume };
   }).filter(Boolean);
   if(bySession.length===0){
     return `<div class="trend"><div class="trend-head"><div>
@@ -1288,6 +1289,7 @@ function exerciseProgressCard(name){
   const heaviest = Math.max(...allSets.map(x=>x.weight||0));
   const best1rm = Math.max(...bySession.map(b=>b.top1rm));
   const trend = bySession.map(b=>b.top1rm);
+  const volTrend = bySession.map(b=>b.volume);
   const diff = trend.length>1 ? trend[trend.length-1]-trend[0] : 0;
   const open = state.openTrend===name;
   const recent = allSets.slice(-6).reverse();
@@ -1304,6 +1306,11 @@ function exerciseProgressCard(name){
         <div><span class="label">推估 1RM</span><b>${best1rm}</b></div>
         <div><span class="label">訓練次數</span><b>${bySession.length}</b></div>
       </div>
+      ${volTrend.length>1 ? `
+      <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line2)">
+        <div class="label" style="margin-bottom:6px">單次訓練量（重量×次數加總，不等於練得更大）</div>
+        ${sparkline(volTrend)}
+      </div>` : ''}
       ${open ? `
       <div class="divider"></div>
       <div class="label" style="margin-bottom:8px">最近幾組</div>
@@ -1373,6 +1380,36 @@ function mainLiftsSummaryCard(){
     </div>`;
 }
 
+// ===== 每週訓練規律程度：全部歷史紀錄，不只是近7天 =====
+// 純描述性呈現「這幾週練了幾次」，刻意不下任何「練越多越好」的結論——
+// 頻率統合分析顯示 6–12 週內不同頻率對力量成長沒有顯著差異，規律與否才是重點，
+// 但規律本身也只呈現趨勢，不代表訓練效果的因果保證。
+function consistencyCard(){
+  if(DB.sessions.length<2) return '';
+  const dates = DB.sessions.map(s=>s.date).sort();
+  const [y0,m0,d0] = dates[0].split('-').map(Number);
+  const start = new Date(y0,m0-1,d0);
+  const [ty,tm,td] = todayISO().split('-').map(Number);
+  const today = new Date(ty,tm-1,td);
+  const totalWeeks = Math.min(16, Math.max(1, Math.ceil((today-start)/86400000/7)+1));
+  const counts = Array.from({length:totalWeeks}, ()=>0);
+  DB.sessions.forEach(s=>{
+    const [sy,sm,sd] = s.date.split('-').map(Number);
+    const wk = Math.floor((new Date(sy,sm-1,sd)-start)/86400000/7);
+    if(wk>=0 && wk<totalWeeks) counts[wk]++;
+  });
+  const max = Math.max(1, ...counts);
+  return `
+    <div style="padding:18px 0; border-bottom:1px solid var(--line2)">
+      <div class="label" style="margin-bottom:12px">每週訓練次數・共 ${totalWeeks} 週</div>
+      <div style="display:flex; align-items:flex-end; gap:4px; height:64px">
+        ${counts.map(c=>`<div style="flex:1; height:${c/max*100}%; min-height:${c>0?'6px':'2px'};
+          background:${c>0?'var(--mark)':'var(--line2)'}; border-radius:4px 4px 2px 2px;
+          transition:height var(--major) var(--e)"></div>`).join('')}
+      </div>
+    </div>`;
+}
+
 function renderPhaseCard(){
   const info = programWeekInfo();
   const pct = info.week/12*100;
@@ -1396,7 +1433,7 @@ function renderPhaseCard(){
 
 function renderProgress(){
   const phaseHtml = renderPhaseCard();
-  const insightsHtml = muscleVolumeCard() + mainLiftsSummaryCard();
+  const insightsHtml = muscleVolumeCard() + mainLiftsSummaryCard() + consistencyCard();
   const mainLifts = DB.settings.mode==='home' ? HOME_MAIN : GYM_MAIN;
   const allNames = new Set();
   DB.sessions.forEach(s=>s.exercises.forEach(e=>{ if(e.def.weighted && e.sets.some(x=>x.done)) allNames.add(e.def.n); }));
@@ -1411,7 +1448,10 @@ function renderProgress(){
     html += others.map(exerciseProgressCard).join('');
   }
   return `${phaseHtml}${insightsHtml}<div class="pad"><h1>趨勢</h1>
-    <p class="muted">${DB.settings.mode==='home'?'居家版':'健身房版'}主課題。曲線是推估 1RM，全部來自你實際記錄的組數。</p></div>${html}`;
+    <p class="muted">${DB.settings.mode==='home'?'居家版':'健身房版'}主課題。曲線是推估 1RM，全部來自你實際記錄的組數。</p></div>${html}
+    <p class="muted" style="font-size:11px; line-height:1.6; padding:16px 0 8px">
+      推估 1RM 用 Epley 公式計算（重量 ×(1+次數/30)）——選這個公式是因為在你這份課表常見的 3–15 下訓練範圍內誤差可接受、不需要額外校正參數；次數越高（15下以上）誤差會變大。這是估算值，不是真的測出來的 1RM，僅供參考長期趨勢。
+    </p>`;
 }
 
 const PROGRESSION_TABLE = [
