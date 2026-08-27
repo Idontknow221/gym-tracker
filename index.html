@@ -521,7 +521,7 @@ function analyzeMotionSamples(samples){
   if(flightMs<=0 || flightMs>1200) return {ok:false, reason:'飛行時間不合理（'+flightMs+'ms），可能是雜訊'};
   const flightSec = flightMs/1000;
   const heightCm = Math.round((MOTION_G * flightSec * flightSec / 8) * 100 * 10) / 10;
-  return {ok:true, flightMs: Math.round(flightMs), heightCm};
+  return {ok:true, flightMs: Math.round(flightMs), heightCm, takeoffMs: Math.round(samples[takeoffIdx].t), landMs: Math.round(samples[landIdx].t)};
 }
 
 // 落下跳版本：從箱子踏下 → 落地(觸地開始) → 短暫觸地 → 反彈起跳(觸地結束) → 飛行 → 最終落地。
@@ -560,7 +560,8 @@ function analyzeDropJumpSamples(samples){
   const flightSec = flightMs/1000, contactSec = contactMs/1000;
   const heightCm = Math.round((MOTION_G * flightSec * flightSec / 8) * 100 * 10) / 10;
   const rsi = Math.round((heightCm/100/contactSec) * 100) / 100; // RSI = 跳躍高度(m) ÷ 觸地時間(s)，這是最常被引用的經典定義
-  return {ok:true, flightMs: Math.round(flightMs), contactMs: Math.round(contactMs), heightCm, rsi};
+  return {ok:true, flightMs: Math.round(flightMs), contactMs: Math.round(contactMs), heightCm, rsi,
+    land1Ms: Math.round(samples[land1Idx].t), takeoffMs: Math.round(samples[takeoffIdx].t), land2Ms: Math.round(samples[land2Idx].t)};
 }
 
 function jumpGap(j){ return Math.round((j.approach - j.standing)*10)/10; }
@@ -1694,6 +1695,37 @@ const NUTRITION_TABLE = [
 ];
 
 // state.motion 存放這次測量的即時狀態：'idle' | 'requesting' | 'listening' | 'done' | 'error'
+// 診斷模式：把這次收集到的原始加速度數值攤開來看，不管這次測量成功或失敗都顯示。
+// 目的是回答一個問題：訊號本身雜訊就很大，還是偵測邏輯抓錯了時間點——這兩件事光看
+// 最終結果數字分不出來，一定要看原始曲線。
+function renderMotionDiagnostic(samples, result){
+  if(!samples || samples.length<2) return '';
+  const mags = samples.map(s=>s.mag);
+  const duration = samples[samples.length-1].t - samples[0].t;
+  const rateHz = duration>0 ? Math.round(samples.length/(duration/1000)) : 0;
+  const minMag = Math.min(...mags).toFixed(1), maxMag = Math.max(...mags).toFixed(1);
+  let events = '';
+  if(result && result.ok){
+    if(result.takeoffMs!==undefined && result.contactMs===undefined){
+      events = `<div class="muted" style="font-size:11.5px; margin-top:6px">偵測到起跳於 ${result.takeoffMs}ms・落地於 ${result.landMs}ms</div>`;
+    } else if(result.land1Ms!==undefined){
+      events = `<div class="muted" style="font-size:11.5px; margin-top:6px">第一次觸地 ${result.land1Ms}ms・起跳 ${result.takeoffMs}ms・最終落地 ${result.land2Ms}ms</div>`;
+    }
+  }
+  return `
+    <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--line2)">
+      <div class="label">診斷資料・原始加速度合力</div>
+      <div class="readout" style="margin-top:8px">
+        <div><span class="label">取樣數</span><b style="font-size:16px">${samples.length}</b></div>
+        <div><span class="label">約略頻率</span><b style="font-size:16px">${rateHz}<span style="font-size:12px; color:var(--faint)">Hz</span></b></div>
+        <div><span class="label">最小/最大</span><b style="font-size:16px">${minMag}/${maxMag}</b></div>
+      </div>
+      ${sparkline(mags)}
+      <div class="muted" style="font-size:10.5px; margin-top:4px">靜止時應接近 9.8；自由落體時會掉到接近 0；落地衝擊時會有明顯尖峰</div>
+      ${events}
+    </div>`;
+}
+
 function renderMotionTest(){
   const m = state.motion || {phase:'idle', mode:'cmj'};
   const mode = m.mode || 'cmj';
@@ -1755,12 +1787,14 @@ function renderMotionTest(){
     <button class="btn btn-primary" data-action="saveMotionTest">存這次結果</button>
     <div style="height:9px"></div>
     <button class="btn btn-sm" data-action="startMotionTest" style="width:100%">重測一次</button>
+    ${renderMotionDiagnostic(m.samples, m.result)}
     ` : ''}
 
     ${m.phase==='error' ? `
     <div class="empty"><div class="figure" style="font-size:32px; color:var(--danger)">—</div>
     <p style="margin-top:10px; font-weight:700">${escapeHtml(m.message||'測量失敗')}</p></div>
     <button class="btn btn-sm" data-action="startMotionTest" style="width:100%">再試一次</button>
+    ${renderMotionDiagnostic(m.samples, null)}
     ` : ''}
 
     ${DB.motionTests.length ? `
@@ -2166,9 +2200,9 @@ async function startMotionTest(){
     window.removeEventListener('devicemotion', handler);
     clearTimeout(timeoutId);
     if(result.ok){
-      state.motion = {phase:'done', mode, result};
+      state.motion = {phase:'done', mode, result, samples};
     } else {
-      state.motion = {phase:'error', mode, message:result.reason};
+      state.motion = {phase:'error', mode, message:result.reason, samples};
     }
     render();
   };
