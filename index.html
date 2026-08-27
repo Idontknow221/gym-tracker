@@ -484,18 +484,105 @@ function programWeekInfo(){
 
 // 摸高測試——PDF 第9頁明講「這是這份計畫成不成功的關鍵指標」：原地跳摸高 vs 助跑跳摸高的差距，
 // 目標從負的變成 +5cm 以上。純附加資料，跟訓練 session 完全分開記錄。
+// ============================================================
+// 動作感測跳躍測試（實驗性）
+// 原理：起跳瞬間身體進入短暫自由落體，加速度計量到的合力會掉到接近0；
+// 落地瞬間會有明顯撞擊尖峰。抓這兩個時間點的間隔＝飛行時間，
+// 用拋體運動公式反推跳躍高度：h = g × t² / 8。
+// 準確度明確不如測力板或慢動作攝影，僅供參考趨勢，不是精密量測。
+// ============================================================
+const MOTION_G = 9.81;
+const MOTION_FREEFALL_THRESHOLD = 3.0;   // m/s²，低於這個視為「接近自由落體」
+const MOTION_IMPACT_THRESHOLD = 15.0;    // m/s²，高於這個視為「落地衝擊」
+const MOTION_MIN_CONTACT_SAMPLES = 2;    // 至少連續幾個取樣點都在自由落體區間，才算真的起跳（濾掉單一雜訊尖刺）
+
+// 純函式：吃一串 {t, mag} 取樣點（t=毫秒時間戳, mag=合加速度量值），回傳偵測結果。
+// 拆成獨立函式是為了不需要真的手機感測器也能測試演算法本身對不對。
+function analyzeMotionSamples(samples){
+  if(!samples || samples.length<4) return {ok:false, reason:'取樣點太少'};
+  let freefallStart = null, freefallStreak = 0, takeoffIdx = null, landIdx = null;
+  for(let i=0;i<samples.length;i++){
+    const m = samples[i].mag;
+    if(takeoffIdx===null){
+      if(m < MOTION_FREEFALL_THRESHOLD){
+        freefallStreak++;
+        if(freefallStreak>=MOTION_MIN_CONTACT_SAMPLES && freefallStart===null) freefallStart = i - MOTION_MIN_CONTACT_SAMPLES + 1;
+        if(freefallStreak>=MOTION_MIN_CONTACT_SAMPLES) takeoffIdx = freefallStart;
+      } else {
+        freefallStreak = 0; freefallStart = null;
+      }
+    } else if(landIdx===null){
+      if(m > MOTION_IMPACT_THRESHOLD){ landIdx = i; break; }
+    }
+  }
+  if(takeoffIdx===null) return {ok:false, reason:'沒有偵測到起跳（自由落體訊號）'};
+  if(landIdx===null) return {ok:false, reason:'沒有偵測到落地（衝擊訊號）'};
+  const flightMs = samples[landIdx].t - samples[takeoffIdx].t;
+  if(flightMs<=0 || flightMs>1200) return {ok:false, reason:'飛行時間不合理（'+flightMs+'ms），可能是雜訊'};
+  const flightSec = flightMs/1000;
+  const heightCm = Math.round((MOTION_G * flightSec * flightSec / 8) * 100 * 10) / 10;
+  return {ok:true, flightMs: Math.round(flightMs), heightCm};
+}
+
+// 落下跳版本：從箱子踏下 → 落地(觸地開始) → 短暫觸地 → 反彈起跳(觸地結束) → 飛行 → 最終落地。
+// 觸地時間是 RSI 的分母，通常只有0.15-0.3秒——這麼短的窗口，手機加速度計本來就比專業
+// 測力板粗糙很多，這裡的數字誤差會比純跳躍高度測試更大，UI 上會用更明顯的字眼提醒。
+function analyzeDropJumpSamples(samples){
+  if(!samples || samples.length<6) return {ok:false, reason:'取樣點太少'};
+  let land1Idx=null, takeoffIdx=null, land2Idx=null, freefallStreak=0, freefallStart=null;
+  for(let i=0;i<samples.length;i++){
+    const m = samples[i].mag;
+    if(land1Idx===null){
+      if(m > MOTION_IMPACT_THRESHOLD) land1Idx = i; // 從箱子踏下、第一次觸地
+      continue;
+    }
+    if(takeoffIdx===null){
+      if(m < MOTION_FREEFALL_THRESHOLD){
+        freefallStreak++;
+        if(freefallStreak>=MOTION_MIN_CONTACT_SAMPLES && freefallStart===null) freefallStart = i - MOTION_MIN_CONTACT_SAMPLES + 1;
+        if(freefallStreak>=MOTION_MIN_CONTACT_SAMPLES) takeoffIdx = freefallStart;
+      } else {
+        freefallStreak = 0; freefallStart = null;
+      }
+      continue;
+    }
+    if(land2Idx===null){
+      if(m > MOTION_IMPACT_THRESHOLD){ land2Idx = i; break; }
+    }
+  }
+  if(land1Idx===null) return {ok:false, reason:'沒有偵測到第一次觸地（從箱子踏下）'};
+  if(takeoffIdx===null) return {ok:false, reason:'沒有偵測到反彈起跳'};
+  if(land2Idx===null) return {ok:false, reason:'沒有偵測到最終落地'};
+  const contactMs = samples[takeoffIdx].t - samples[land1Idx].t;
+  const flightMs = samples[land2Idx].t - samples[takeoffIdx].t;
+  if(contactMs<=0 || contactMs>1000) return {ok:false, reason:'觸地時間不合理（'+Math.round(contactMs)+'ms），可能是雜訊'};
+  if(flightMs<=0 || flightMs>1200) return {ok:false, reason:'飛行時間不合理（'+Math.round(flightMs)+'ms），可能是雜訊'};
+  const flightSec = flightMs/1000, contactSec = contactMs/1000;
+  const heightCm = Math.round((MOTION_G * flightSec * flightSec / 8) * 100 * 10) / 10;
+  const rsi = Math.round((heightCm/100/contactSec) * 100) / 100; // RSI = 跳躍高度(m) ÷ 觸地時間(s)，這是最常被引用的經典定義
+  return {ok:true, flightMs: Math.round(flightMs), contactMs: Math.round(contactMs), heightCm, rsi};
+}
+
 function jumpGap(j){ return Math.round((j.approach - j.standing)*10)/10; }
+
 function jumpTestSummary(){
   const tests = Array.isArray(DB.jumpTests) ? [...DB.jumpTests].sort((a,b)=> a.date<b.date?-1:1) : [];
   if(!tests.length) return null;
   const latest = tests[tests.length-1];
   const gaps = tests.map(jumpGap);
   const bestGap = Math.max(...gaps);
-  return { latest, latestGap: jumpGap(latest), bestGap, trend: gaps, count: tests.length };
+  const reach = (DB.settings && typeof DB.settings.standingReach==='number') ? DB.settings.standingReach : null;
+  const heightOf = j => reach!==null ? Math.round((j.standing - reach)*10)/10 : null;
+  return {
+    latest, latestGap: jumpGap(latest), bestGap, trend: gaps, count: tests.length,
+    reach,
+    standingHeight: heightOf(latest),
+    approachHeight: reach!==null ? Math.round((latest.approach - reach)*10)/10 : null
+  };
 }
 const HOME_MAIN = ["Bulgarian Split Squat","DB Floor Press","DB Deadlift","DB Shoulder Press"];
 
-let DB = {sessions:[], notes:[], bodyweight:[], jumpTests:[], settings:{theme:"light", mode:"gym"}};
+let DB = {sessions:[], notes:[], bodyweight:[], jumpTests:[], motionTests:[], settings:{theme:"light", mode:"gym"}};
 
 // 若不是在 Claude 對話框裡開啟（例如加到 iPhone 主畫面獨立執行），
 // window.storage 不存在，改用瀏覽器內建的 localStorage 當備援，行為對 App 其餘部分完全透明。
@@ -507,7 +594,7 @@ if(!window.storage){
     delete: async(k)=>{ localStorage.removeItem(k); return {deleted:true}; }
   };
 }
-let state = {screen:"home", currentDay:null, currentSession:null, exIndex:0, timerLeft:0, timerTotal:0, timerRunning:false, timerInterval:null, openTrend:null, justSet:null};
+let state = {screen:"home", currentDay:null, currentSession:null, exIndex:0, timerLeft:0, timerTotal:0, timerRunning:false, timerInterval:null, openTrend:null, justSet:null, motion:{phase:"idle"}};
 
 /* ============================================================
    DATA SCHEMA VERSION & MIGRATION LAYER
@@ -515,7 +602,7 @@ let state = {screen:"home", currentDay:null, currentSession:null, exIndex:0, tim
    weight / reps / rir / date / note / bodyweight。這條規則由
    「資料指紋」在程式層強制，不是靠自律。
    ============================================================ */
-const CURRENT_SCHEMA = 3;
+const CURRENT_SCHEMA = 5;
 
 /* 舊資料種子（SEED）。
    用途：把手機上舊版的資料直接烘進這個檔案，開啟就有，不用手動貼上匯入。
@@ -551,6 +638,7 @@ function dbFingerprint(db){
     bwSum: Array.isArray(db.bodyweight) ? Math.round(db.bodyweight.reduce((a,b)=>a+(Number(b.weight)||0),0)*1000)/1000 : 0,
     noteCount: Array.isArray(db.notes) ? db.notes.length : 0,
     jumpTestCount: Array.isArray(db.jumpTests) ? db.jumpTests.length : 0,
+    motionTestCount: Array.isArray(db.motionTests) ? db.motionTests.length : 0,
     jumpTestSum: Array.isArray(db.jumpTests) ? Math.round(db.jumpTests.reduce((a,j)=>a+(Number(j.standing)||0)+(Number(j.approach)||0),0)*1000)/1000 : 0,
     firstDate: dates[0]||null,
     lastDate: dates[dates.length-1]||null
@@ -612,6 +700,29 @@ const MIGRATIONS = [
         if(typeof s.checkin.sleepHours!=='number') s.checkin.sleepHours = null;
       });
       db.schemaVersion = 3;
+    }
+  },
+  {
+    // v4：一個純附加欄位——站立摸高基準值。PDF「助跑診斷測試」把這個當成固定基準
+    // （量一次，不像其他跳躍測試要每2週重測），用來從摸高高度換算出實際垂直跳躍高度。
+    // 選填，預設 null，不影響既有的摸高測試紀錄或任何其他資料。
+    from:3, to:4, name:'add-standing-reach', mutatesValues:false,
+    guard: db => db.schemaVersion===undefined || db.schemaVersion<4,
+    up: db => {
+      if(!db.settings || typeof db.settings!=='object') db.settings = {};
+      if(typeof db.settings.standingReach!=='number') db.settings.standingReach = null;
+      db.schemaVersion = 4;
+    }
+  },
+  {
+    // v5：一個獨立的新集合——動作感測器跳躍測試。刻意跟摸高測試（jumpTests）分開存，
+    // 因為量測方式完全不同（一個是捲尺量反射距離，一個是手機加速度計反推飛行時間），
+    // 混在同一條趨勢線裡會產生不連續、誤導人的跳動，不能假裝是同一種資料。
+    from:4, to:5, name:'add-motion-tests', mutatesValues:false,
+    guard: db => db.schemaVersion===undefined || db.schemaVersion<5,
+    up: db => {
+      if(!Array.isArray(db.motionTests)) db.motionTests = [];
+      db.schemaVersion = 5;
     }
   }
 ];
@@ -865,6 +976,7 @@ function render(){
   else if(state.screen==='progress') app.innerHTML = renderProgress();
   else if(state.screen==='more') app.innerHTML = renderMore();
   else if(state.screen==='reference') app.innerHTML = renderReference();
+  else if(state.screen==='motionTest') app.innerHTML = renderMotionTest();
   bindEvents();
 }
 
@@ -1477,6 +1589,11 @@ function jumpTestCard(){
       </div>
       ${s.trend.length>1 ? sparkline(s.trend) : ''}
       ${s.count>1 ? `<div class="muted" style="font-size:12px; margin-top:6px">歷史最佳 ${s.bestGap>0?'+':''}${s.bestGap}cm・共測過 ${s.count} 次</div>` : ''}
+      ${s.reach!==null ? `
+      <div class="readout" style="margin-top:12px">
+        <div><span class="label">原地跳高度</span><b>${s.standingHeight}<span style="font-size:14px; color:var(--faint)">cm</span></b></div>
+        <div><span class="label">助跑跳高度</span><b>${s.approachHeight}<span style="font-size:14px; color:var(--faint)">cm</span></b></div>
+      </div>` : `<p class="muted" style="font-size:11.5px; margin-top:8px">還沒設定站立摸高基準值，到「設定」頁填上就能算出實際跳躍高度</p>`}
     </div>`;
 }
 
@@ -1576,6 +1693,89 @@ const NUTRITION_TABLE = [
   {n:"碳水", v:"380–420 g", how:"不要怕碳水。跳躍和排球非常吃碳水，吃太少會直接跳不高"}
 ];
 
+// state.motion 存放這次測量的即時狀態：'idle' | 'requesting' | 'listening' | 'done' | 'error'
+function renderMotionTest(){
+  const m = state.motion || {phase:'idle', mode:'cmj'};
+  const mode = m.mode || 'cmj';
+  return `
+    <div class="topbar"><div class="back" data-action="backMore">‹</div>
+      <div style="flex:1; min-width:0"><div class="label">實驗性功能</div>
+      <h1 style="font-size:22px; overflow-wrap:break-word">動作感測跳躍測試</h1></div></div>
+
+    <div class="note">
+      <div class="label label-mark">準確度提醒</div>
+      <p style="font-size:13px; line-height:1.6; margin-top:6px">
+        用手機加速度計反推飛行時間，準確度比不上慢動作攝影或測力板，數字僅供參考長期趨勢，不是精密量測。
+        RSI 需要的觸地時間窗口只有0.15-0.3秒，比純跳躍高度測試更容易受雜訊影響，誤差會更大。
+        測量時<b>雙手交叉抱胸握緊手機</b>，不要用手臂擺盪，手臂動作會被誤判成身體的跳躍訊號。
+      </p>
+    </div>
+
+    ${m.phase==='idle' ? `
+    <div style="display:flex; gap:8px; margin-top:16px">
+      <div class="check" data-action="setMotionMode" data-mode="cmj" style="flex:1; height:44px; ${mode==='cmj'?'background:var(--mark); border-color:var(--mark); color:var(--void)':''}">跳躍高度</div>
+      <div class="check" data-action="setMotionMode" data-mode="dropjump" style="flex:1; height:44px; ${mode==='dropjump'?'background:var(--mark); border-color:var(--mark); color:var(--void)':''}">落下跳 RSI</div>
+    </div>
+    <p class="muted" style="font-size:12px; margin-top:8px; line-height:1.6">
+      ${mode==='cmj' ? '原地垂直跳一次，手保持抱胸不動。' : '從矮箱/階梯踏下，落地立刻反彈垂直跳起，手保持抱胸不動。'}
+    </p>
+    <div style="height:12px"></div>
+    <button class="btn btn-primary" data-action="startMotionTest">開始測量</button>
+    <p class="muted" style="font-size:12px; margin-top:10px; text-align:center">按下後手機會請求動作感測權限，同意後盡快完成動作</p>
+    ` : ''}
+
+    ${m.phase==='requesting' ? `
+    <div class="empty"><div class="figure" style="font-size:32px">···</div>
+    <p class="muted" style="margin-top:10px">請求感測權限中</p></div>
+    ` : ''}
+
+    ${m.phase==='ready' ? `
+    <div class="empty"><div class="figure" style="font-size:56px; color:var(--mark)">${m.countdown}</div>
+    <p style="margin-top:10px; font-weight:700">先喬好手機位置</p>
+    <p class="muted" style="font-size:12px; margin-top:4px">倒數結束才開始收訊號</p></div>
+    ` : ''}
+
+    ${m.phase==='listening' ? `
+    <div class="empty"><div class="figure" style="font-size:32px; color:var(--mark)">●</div>
+    <p style="margin-top:10px; font-weight:700">偵測中・現在跳！</p>
+    <p class="muted" style="font-size:12px; margin-top:4px">3 秒後自動停止</p></div>
+    ` : ''}
+
+    ${m.phase==='done' ? `
+    <div style="text-align:center; padding-top:20px">
+      <div class="figure f-mega" style="color:var(--mark)">${m.result.heightCm}</div>
+      <div class="label" style="margin-top:4px">公分・估計跳躍高度</div>
+      <div class="readout" style="justify-content:center; margin-top:14px">
+        <div><span class="label">飛行時間</span><b>${m.result.flightMs}<span style="font-size:14px; color:var(--faint)">ms</span></b></div>
+        ${m.result.contactMs!==undefined ? `<div><span class="label">觸地時間</span><b>${m.result.contactMs}<span style="font-size:14px; color:var(--faint)">ms</span></b></div>` : ''}
+        ${m.result.rsi!==undefined ? `<div><span class="label">RSI</span><b>${m.result.rsi}</b></div>` : ''}
+      </div>
+    </div>
+    <div style="height:20px"></div>
+    <button class="btn btn-primary" data-action="saveMotionTest">存這次結果</button>
+    <div style="height:9px"></div>
+    <button class="btn btn-sm" data-action="startMotionTest" style="width:100%">重測一次</button>
+    ` : ''}
+
+    ${m.phase==='error' ? `
+    <div class="empty"><div class="figure" style="font-size:32px; color:var(--danger)">—</div>
+    <p style="margin-top:10px; font-weight:700">${escapeHtml(m.message||'測量失敗')}</p></div>
+    <button class="btn btn-sm" data-action="startMotionTest" style="width:100%">再試一次</button>
+    ` : ''}
+
+    ${DB.motionTests.length ? `
+    <h3>歷史紀錄</h3>
+    <div class="util">
+      ${[...DB.motionTests].sort((a,b)=>a.date<b.date?1:-1).slice(0,8).map(t=>`
+        <div class="util-row" style="padding:11px 0">
+          <span class="k">${fmtDate(t.date)}${t.type==='dropjump'?' · RSI':''}</span>
+          <span style="font-family:var(--rounded); font-weight:700">${t.heightCm}cm${t.rsi!==undefined?' · RSI '+t.rsi:''}</span>
+        </div>`).join('')}
+    </div>` : ''}
+    <div style="height:20px"></div>
+  `;
+}
+
 function renderReference(){
   return `
     <div class="topbar"><div class="back" data-action="backMore">‹</div>
@@ -1660,6 +1860,12 @@ function renderMore(){
     </div>` : `<p class="muted" style="font-size:12.5px; margin-top:8px">還沒有紀錄。體重是判斷吃得夠不夠的唯一依據。</p>`}
 
     <h3>摸高測試</h3>
+    <p class="muted" style="font-size:12px; margin-bottom:8px">站立摸高是固定基準值，量一次就好；下面兩個是每次測試都要重新記錄的</p>
+    <div style="display:flex; gap:9px; margin-bottom:9px">
+      <input type="number" inputmode="decimal" id="standingReachInput" placeholder="站立摸高 cm（基準值）"
+        value="${DB.settings.standingReach!==null&&DB.settings.standingReach!==undefined?DB.settings.standingReach:''}">
+      <button class="btn btn-sm" data-action="saveStandingReach" style="flex:0 0 auto">存基準值</button>
+    </div>
     <p class="muted" style="font-size:12px; margin-bottom:8px">PDF 建議每 2 週測一次，記錄原地跳跟助跑跳各自的摸高高度</p>
     <div style="display:flex; gap:9px; margin-bottom:9px">
       <input type="number" inputmode="decimal" id="jtStanding" placeholder="原地跳 cm">
@@ -1694,6 +1900,10 @@ function renderMore(){
 
     <h3>課表參考</h3>
     <button class="btn btn-sm" data-action="openReference" style="width:100%">起始重量・Deload・卡關診斷・飲食目標</button>
+
+    <h3>動作感測跳躍測試</h3>
+    <p class="muted" style="font-size:12px; margin-bottom:8px">實驗性功能，用手機加速度計估計跳躍高度</p>
+    <button class="btn btn-sm" data-action="openMotionTest" style="width:100%">開始測量</button>
 
     <h3>危險區</h3>
     <button class="btn btn-sm btn-danger" data-action="resetData" style="width:100%">清除所有資料</button>
@@ -1799,6 +2009,22 @@ function bindEvents(){
       else if(act==='backHistory'){ state.screen='history'; render(); }
       else if(act==='backMore'){ state.screen='more'; render(); }
       else if(act==='openReference'){ state.screen='reference'; render(); }
+      else if(act==='openMotionTest'){ state.motion={phase:'idle', mode:'cmj'}; state.screen='motionTest'; render(); }
+      else if(act==='startMotionTest'){ startMotionTest(); }
+      else if(act==='setMotionMode'){
+        state.motion = {phase:'idle', mode: el.dataset.mode}; render();
+      }
+      else if(act==='saveMotionTest'){
+        if(state.motion.phase==='done'){
+          const r = state.motion.result;
+          const entry = {date:todayISO(), type:state.motion.mode||'cmj', heightCm:r.heightCm, flightMs:r.flightMs};
+          if(r.contactMs!==undefined) entry.contactMs = r.contactMs;
+          if(r.rsi!==undefined) entry.rsi = r.rsi;
+          DB.motionTests.push(entry);
+          saveDB();
+        }
+        state.motion={phase:'idle', mode:(state.motion&&state.motion.mode)||'cmj'}; render();
+      }
       else if(act==='toggleTheme'){ DB.settings.theme = DB.settings.theme==='dark'?'light':'dark'; applyTheme(); saveDB(); render(); }
       else if(act==='toggleMode'){
         if(state.currentSession){ alert('請先完成或離開目前訓練，再切換健身房／居家模式'); return; }
@@ -1820,6 +2046,11 @@ function bindEvents(){
         const v = Number(document.getElementById('bwInput').value);
         if(!v){ alert('請輸入體重'); return; }
         DB.bodyweight.push({date:todayISO(), weight:v}); saveDB(); render();
+      }
+      else if(act==='saveStandingReach'){
+        const v = Number(document.getElementById('standingReachInput').value);
+        if(!v){ alert('請輸入站立摸高高度'); return; }
+        DB.settings.standingReach = v; saveDB(); render();
       }
       else if(act==='logJumpTest'){
         const standing = Number(document.getElementById('jtStanding').value);
@@ -1865,7 +2096,7 @@ function bindEvents(){
       }
       else if(act==='resetData'){
         if(confirm('確定要清除所有訓練紀錄嗎？此動作無法復原。')){
-          DB = {schemaVersion:CURRENT_SCHEMA, sessions:[], notes:[], bodyweight:[], jumpTests:[], settings:DB.settings, meta:DB.meta||{}};
+          DB = {schemaVersion:CURRENT_SCHEMA, sessions:[], notes:[], bodyweight:[], jumpTests:[], motionTests:[], settings:DB.settings, meta:DB.meta||{}};
           saveDB(); render();
         }
       }
@@ -1890,6 +2121,79 @@ function bindEvents(){
     };
   });
 }
+
+// 實際串接手機感測器。iOS 13+ 的 Safari 要求先呼叫 requestPermission()（必須直接在使用者
+// 點擊的當下呼叫，不能延遲），使用者同意後才能監聽 devicemotion 事件；Android／舊版 iOS
+// 沒有這個權限機制，直接監聽即可。這段邏輯無法在沒有真實手機的環境驗證，所以每一步
+// 都包在 try/catch 裡，任何失敗都會停在明確的錯誤訊息，不會讓整個 App 卡住或崩潰。
+async function startMotionTest(){
+  const mode = (state.motion && state.motion.mode) || 'cmj';
+  state.motion = {phase:'requesting', mode};
+  render();
+  try{
+    if(typeof DeviceMotionEvent === 'undefined'){
+      state.motion = {phase:'error', mode, message:'這個瀏覽器不支援動作感測，無法使用這個功能'};
+      render(); return;
+    }
+    if(typeof DeviceMotionEvent.requestPermission === 'function'){
+      const perm = await DeviceMotionEvent.requestPermission();
+      if(perm !== 'granted'){
+        state.motion = {phase:'error', mode, message:'沒有取得動作感測權限，無法測量'};
+        render(); return;
+      }
+    }
+  }catch(e){
+    state.motion = {phase:'error', mode, message:'請求感測權限時發生錯誤：'+e.message};
+    render(); return;
+  }
+
+  // 準備階段：給2秒鐘喬好手機位置，倒數期間完全不收集訊號，避免你手忙腳亂造成的雜訊
+  await new Promise(resolve=>{
+    let count = 2;
+    state.motion = {phase:'ready', mode, countdown:count};
+    render();
+    const iv = setInterval(()=>{
+      count--;
+      if(count<=0){ clearInterval(iv); resolve(); }
+      else { state.motion = {phase:'ready', mode, countdown:count}; render(); }
+    }, 1000);
+  });
+
+  const samples = [];
+  const startT = performance.now();
+  let handler, timeoutId;
+  const finish = (result)=>{
+    window.removeEventListener('devicemotion', handler);
+    clearTimeout(timeoutId);
+    if(result.ok){
+      state.motion = {phase:'done', mode, result};
+    } else {
+      state.motion = {phase:'error', mode, message:result.reason};
+    }
+    render();
+  };
+
+  handler = (e)=>{
+    const a = e.accelerationIncludingGravity;
+    if(!a || a.x===null) return;
+    const mag = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+    samples.push({t: performance.now()-startT, mag});
+  };
+
+  try{
+    window.addEventListener('devicemotion', handler);
+  }catch(e){
+    state.motion = {phase:'error', mode, message:'無法啟動動作感測：'+e.message};
+    render(); return;
+  }
+
+  state.motion = {phase:'listening', mode};
+  render();
+  timeoutId = setTimeout(()=>{
+    finish(mode==='dropjump' ? analyzeDropJumpSamples(samples) : analyzeMotionSamples(samples));
+  }, 3000);
+}
+
 
 function startRestTimer(seconds){
   state.timerLeft = seconds;
@@ -1942,4 +2246,3 @@ loadDB().then(ok=>{ if(ok) render(); });
 </script>
 </body>
 </html>
- 
