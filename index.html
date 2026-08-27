@@ -564,6 +564,77 @@ function analyzeDropJumpSamples(samples){
     land1Ms: Math.round(samples[land1Idx].t), takeoffMs: Math.round(samples[takeoffIdx].t), land2Ms: Math.round(samples[land2Idx].t)};
 }
 
+// 觸地時間超過250ms，代表這不是真正的「反應性」落下跳（比較像分開的踏下+另一次跳），
+// 這種情況下算出來的 RSI 不能代表反應力，標成無效，但高度數字本身仍納入平均——
+// 只是不代表精準，這套方法的準確度天花板本來就有限。
+const RSI_MAX_VALID_CONTACT_MS = 250;
+
+// 這批裡到底有沒有「真的有效」的 RSI——不能只看 type==='dropjump' 就顯示 RSI 標籤，
+// 觸地時間過長或被捨棄的那幾次不算數。新格式從 trials[] 逐筆檢查；沒有 trials 的舊資料
+// 只能退回看當時存的 rsi/contactMs（那個年代還沒有 flag 系統，只能做到這樣）。
+function entryValidRsi(t){
+  if(t.trials){
+    const valid = t.trials.filter(tr => tr.type==='dropjump' && tr.rsi!==undefined && !tr.rsiInvalid && tr.flag!=='RETEST_DISCARDED');
+    if(valid.length===0) return null;
+    return Math.round((valid.reduce((a,tr)=>a+tr.rsi,0)/valid.length) * 100) / 100;
+  }
+  if(t.rsi!==undefined && (t.contactMs===undefined || t.contactMs<=RSI_MAX_VALID_CONTACT_MS)) return t.rsi;
+  return null;
+}
+
+// 把一次感測分析結果包成標準的 trial 物件，決定它的 flag 跟要不要算進平均。
+function makeTrial(mode, result, flag){
+  const trial = {
+    at: new Date().toISOString(), type: mode,
+    flightMs: result.flightMs, heightCm: result.heightCm,
+    flag: flag, includedInSummary: flag==='VALID'
+  };
+  if(result.contactMs !== undefined) trial.contactMs = result.contactMs;
+  if(result.rsi !== undefined){
+    if(result.contactMs > RSI_MAX_VALID_CONTACT_MS && flag==='VALID'){
+      trial.flag = 'INVALID_CONTACT';
+      trial.includedInSummary = true; // 高度仍算數，只有 RSI 不可信
+      trial.rsiInvalid = true;
+    }
+    trial.rsi = result.rsi;
+  }
+  return trial;
+}
+
+// 彙總一批 trial：平均的是「高度」本身，不是飛行時間——構念是跳躍高度，文獻慣例也是
+// 平均高度。先平均時間再轉高度在數學上會有 Jensen's inequality 造成的些微偏差，但正常
+// 散度下通常 <0.2cm，遠小於裝置本身的雜訊，不值得為了這個犧牲直覺可解釋性。
+// 絕對不自動刪 outlier，全部 VALID 的都算進去。
+function summarizeTrials(trials){
+  const included = (trials||[]).filter(t=>t.includedInSummary && t.heightCm!==undefined);
+  if(included.length===0) return null;
+  const heights = included.map(t=>t.heightCm);
+  const meanHeightCm = Math.round((heights.reduce((a,b)=>a+b,0)/heights.length) * 10) / 10;
+  const bestHeightCm = Math.max(...heights);
+  const minHeightCm = Math.min(...heights);
+  const maxHeightCm = bestHeightCm;
+  const flightVals = included.map(t=>t.flightMs);
+  const meanFlightMs = Math.round(flightVals.reduce((a,b)=>a+b,0)/flightVals.length);
+  return {n: included.length, meanHeightCm, bestHeightCm, minHeightCm, maxHeightCm, meanFlightMs};
+}
+
+// 統一的寫入邏輯：不管是「只存這一次」還是「存這批平均」，都走這一條路徑，
+// 避免兩套格式繼續分岔。原始的每一筆 trial 都完整保留在 trials 裡，不會因為
+// 存了平均值就把個別測量的原始數字丟掉。
+function saveMotionSession(trials){
+  const summary = summarizeTrials(trials);
+  if(!summary) return false;
+  const entry = {
+    date: todayISO(), type: state.motion.mode||'cmj',
+    n: summary.n, meanHeightCm: summary.meanHeightCm, bestHeightCm: summary.bestHeightCm,
+    minHeightCm: summary.minHeightCm, maxHeightCm: summary.maxHeightCm, meanFlightMs: summary.meanFlightMs,
+    trials: trials
+  };
+  DB.motionTests.push(entry);
+  saveDB();
+  return true;
+}
+
 function jumpGap(j){ return Math.round((j.approach - j.standing)*10)/10; }
 
 function jumpTestSummary(){
@@ -1727,10 +1798,21 @@ function renderMotionDiagnostic(samples, result){
 }
 
 function renderMotionTest(){
-  const m = state.motion || {phase:'idle', mode:'cmj'};
+  const m = state.motion || {phase:'idle', mode:'cmj', batch:{trials:[], startedAt:null}};
   const mode = m.mode || 'cmj';
+  const batch = m.batch || {trials:[], startedAt:null};
+
+  // done 畫面要即時預覽「如果現在存這批，會是什麼結果」，所以把目前這次也暫時併進去算
+  let previewTrials = batch.trials, previewSummary = null, highSpread = false;
+  if(m.phase==='done' && m.result){
+    const currentTrial = makeTrial(mode, m.result, 'VALID');
+    previewTrials = batch.trials.concat([currentTrial]);
+    previewSummary = summarizeTrials(previewTrials);
+    if(previewSummary && (previewSummary.maxHeightCm - previewSummary.minHeightCm) >= 5) highSpread = true;
+  }
+
   return `
-    <div class="topbar"><div class="back" data-action="backMore">‹</div>
+    <div class="topbar"><div class="back" data-action="backMotionTest">‹</div>
       <div style="flex:1; min-width:0"><div class="label">實驗性功能</div>
       <h1 style="font-size:22px; overflow-wrap:break-word">動作感測跳躍測試</h1></div></div>
 
@@ -1738,8 +1820,10 @@ function renderMotionTest(){
       <div class="label label-mark">準確度提醒</div>
       <p style="font-size:13px; line-height:1.6; margin-top:6px">
         用手機加速度計反推飛行時間，準確度比不上慢動作攝影或測力板，數字僅供參考長期趨勢，不是精密量測。
+        文獻上手持手機測跳躍高度、未經校正的誤差可達16–18cm（Mascia et al., 2023），比一般想像的更粗糙。
         RSI 需要的觸地時間窗口只有0.15-0.3秒，比純跳躍高度測試更容易受雜訊影響，誤差會更大。
         測量時<b>雙手交叉抱胸握緊手機</b>，不要用手臂擺盪，手臂動作會被誤判成身體的跳躍訊號。
+        同一天裡差幾公分很常見，不要把小於這批範圍的變化當成進步。
       </p>
     </div>
 
@@ -1750,6 +1834,7 @@ function renderMotionTest(){
     </div>
     <p class="muted" style="font-size:12px; margin-top:8px; line-height:1.6">
       ${mode==='cmj' ? '原地垂直跳一次，手保持抱胸不動。' : '從矮箱/階梯踏下，落地立刻反彈垂直跳起，手保持抱胸不動。'}
+      建議連續測 3 次取平均，單次雜訊比較大。
     </p>
     <div style="height:12px"></div>
     <button class="btn btn-primary" data-action="startMotionTest">開始測量</button>
@@ -1780,13 +1865,30 @@ function renderMotionTest(){
       <div class="readout" style="justify-content:center; margin-top:14px">
         <div><span class="label">飛行時間</span><b>${m.result.flightMs}<span style="font-size:14px; color:var(--faint)">ms</span></b></div>
         ${m.result.contactMs!==undefined ? `<div><span class="label">觸地時間</span><b>${m.result.contactMs}<span style="font-size:14px; color:var(--faint)">ms</span></b></div>` : ''}
-        ${m.result.rsi!==undefined ? `<div><span class="label">RSI</span><b>${m.result.rsi}</b></div>` : ''}
+        ${m.result.rsi!==undefined ? (m.result.contactMs>RSI_MAX_VALID_CONTACT_MS ?
+          `<div><span class="label">RSI</span><b style="color:var(--danger); font-size:14px">無效</b></div>` :
+          `<div><span class="label">RSI</span><b>${m.result.rsi}</b></div>`) : ''}
       </div>
+      ${(m.result.rsi!==undefined && m.result.contactMs>RSI_MAX_VALID_CONTACT_MS) ?
+        `<p class="muted" style="font-size:11.5px; margin-top:8px">觸地過長（${m.result.contactMs}ms），不像反應性落下跳，這次的 RSI 不採計，但高度仍可信</p>` : ''}
     </div>
     <div style="height:20px"></div>
-    <button class="btn btn-primary" data-action="saveMotionTest">存這次結果</button>
+    <button class="btn btn-primary" data-action="addToMotionBatch">加入這批・再測一次</button>
+    <p class="muted" style="font-size:11px; margin-top:6px; text-align:center">休息約 30–60 秒再跳</p>
     <div style="height:9px"></div>
-    <button class="btn btn-sm" data-action="startMotionTest" style="width:100%">重測一次</button>
+    <button class="btn btn-sm" data-action="saveMotionTest">只存這一次</button>
+    <div style="height:9px"></div>
+    <button class="btn btn-sm" data-action="discardMotionTrial" style="width:100%">重測（不採用這次）</button>
+    ${batch.trials.length>0 ? `
+    <div class="note" style="margin-top:16px">
+      <div class="label label-mark">這批目前 ${previewSummary?previewSummary.n:0} 次（含這次）</div>
+      <div class="muted" style="font-size:12px; margin-top:4px">
+        ${previewTrials.map(t=>`${t.heightCm}cm${t.flag!=='VALID'?'（'+t.flag+'）':''}`).join('、')}
+      </div>
+      ${highSpread ? `<p style="font-size:12px; color:var(--danger); margin-top:8px; line-height:1.5">這批散度很大，比較像測量不穩，不適合拿去判斷有沒有進步。</p>` : ''}
+    </div>` : ''}
+    ${(previewSummary && previewSummary.n>=2) ? `
+    <button class="btn btn-primary" data-action="saveMotionBatch" style="margin-top:10px">存這批 ${previewSummary.n} 次的平均值</button>` : ''}
     ${renderMotionDiagnostic(m.samples, m.result)}
     ` : ''}
 
@@ -1794,17 +1896,25 @@ function renderMotionTest(){
     <div class="empty"><div class="figure" style="font-size:32px; color:var(--danger)">—</div>
     <p style="margin-top:10px; font-weight:700">${escapeHtml(m.message||'測量失敗')}</p></div>
     <button class="btn btn-sm" data-action="startMotionTest" style="width:100%">再試一次</button>
+    ${batch.trials.length>0 ? `<p class="muted" style="font-size:11.5px; margin-top:10px; text-align:center">這批已收集的 ${batch.trials.length} 次還在，不會因為這次失敗被清掉</p>` : ''}
     ${renderMotionDiagnostic(m.samples, null)}
     ` : ''}
 
     ${DB.motionTests.length ? `
     <h3>歷史紀錄</h3>
     <div class="util">
-      ${[...DB.motionTests].sort((a,b)=>a.date<b.date?1:-1).slice(0,8).map(t=>`
+      ${[...DB.motionTests].sort((a,b)=>a.date<b.date?1:-1).slice(0,8).map(t=>{
+        const isNew = t.n !== undefined;
+        const n = isNew ? t.n : 1;
+        const height = isNew ? t.meanHeightCm : t.heightCm;
+        const validRsi = t.type==='dropjump' ? entryValidRsi(t) : null;
+        const rsiLabel = t.type!=='dropjump' ? '' : (validRsi!==null ? ' · RSI '+validRsi : ' · RSI無效');
+        return `
         <div class="util-row" style="padding:11px 0">
-          <span class="k">${fmtDate(t.date)}${t.type==='dropjump'?' · RSI':''}</span>
-          <span style="font-family:var(--rounded); font-weight:700">${t.heightCm}cm${t.rsi!==undefined?' · RSI '+t.rsi:''}</span>
-        </div>`).join('')}
+          <span class="k">${fmtDate(t.date)}${n>1?` · ${n}次平均`:''}</span>
+          <span style="font-family:var(--rounded); font-weight:700">${height}cm${rsiLabel}${n>1?` <span class="muted" style="font-family:var(--sans); font-weight:400; font-size:11px">(${t.minHeightCm}–${t.maxHeightCm})</span>`:''}</span>
+        </div>`;
+      }).join('')}
     </div>` : ''}
     <div style="height:20px"></div>
   `;
@@ -2043,21 +2153,54 @@ function bindEvents(){
       else if(act==='backHistory'){ state.screen='history'; render(); }
       else if(act==='backMore'){ state.screen='more'; render(); }
       else if(act==='openReference'){ state.screen='reference'; render(); }
-      else if(act==='openMotionTest'){ state.motion={phase:'idle', mode:'cmj'}; state.screen='motionTest'; render(); }
+      else if(act==='openMotionTest'){ state.motion={phase:'idle', mode:'cmj', batch:{trials:[], startedAt:null}}; state.screen='motionTest'; render(); }
       else if(act==='startMotionTest'){ startMotionTest(); }
+      else if(act==='backMotionTest'){
+        if(!leaveMotionTestIfConfirmed()) return;
+        state.screen='more'; render();
+      }
       else if(act==='setMotionMode'){
-        state.motion = {phase:'idle', mode: el.dataset.mode}; render();
+        const hasBatch = state.motion && state.motion.batch && state.motion.batch.trials.length>0;
+        if(hasBatch && !confirm('切換模式會放棄目前這批未儲存的測量結果，確定要切換嗎？')) return;
+        state.motion = {phase:'idle', mode: el.dataset.mode, batch:{trials:[], startedAt:null}}; render();
       }
       else if(act==='saveMotionTest'){
         if(state.motion.phase==='done'){
-          const r = state.motion.result;
-          const entry = {date:todayISO(), type:state.motion.mode||'cmj', heightCm:r.heightCm, flightMs:r.flightMs};
-          if(r.contactMs!==undefined) entry.contactMs = r.contactMs;
-          if(r.rsi!==undefined) entry.rsi = r.rsi;
-          DB.motionTests.push(entry);
-          saveDB();
+          const batchTrials = (state.motion.batch && state.motion.batch.trials) || [];
+          if(batchTrials.length>0 && !confirm(`前面 ${batchTrials.length} 次不會一起存，確定只留這一跳？`)) return;
+          const trial = makeTrial(state.motion.mode, state.motion.result, 'VALID');
+          saveMotionSession([trial]);
         }
-        state.motion={phase:'idle', mode:(state.motion&&state.motion.mode)||'cmj'}; render();
+        state.motion={phase:'idle', mode:(state.motion&&state.motion.mode)||'cmj', batch:{trials:[], startedAt:null}}; render();
+      }
+      else if(act==='addToMotionBatch'){
+        if(state.motion.phase==='done'){
+          const mode = state.motion.mode;
+          const trial = makeTrial(mode, state.motion.result, 'VALID');
+          const prevBatch = state.motion.batch || {trials:[], startedAt:null};
+          const batch = {trials: prevBatch.trials.concat([trial]), startedAt: prevBatch.startedAt || new Date().toISOString()};
+          state.motion = {phase:'idle', mode, batch};
+          startMotionTest();
+        }
+      }
+      else if(act==='discardMotionTrial'){
+        if(state.motion.phase==='done'){
+          const mode = state.motion.mode;
+          const trial = makeTrial(mode, state.motion.result, 'RETEST_DISCARDED');
+          const prevBatch = state.motion.batch || {trials:[], startedAt:null};
+          const batch = {trials: prevBatch.trials.concat([trial]), startedAt: prevBatch.startedAt || new Date().toISOString()};
+          state.motion = {phase:'idle', mode, batch};
+          startMotionTest();
+        }
+      }
+      else if(act==='saveMotionBatch'){
+        if(state.motion.phase==='done'){
+          const currentTrial = makeTrial(state.motion.mode, state.motion.result, 'VALID');
+          const prevBatch = state.motion.batch || {trials:[], startedAt:null};
+          const allTrials = prevBatch.trials.concat([currentTrial]);
+          saveMotionSession(allTrials);
+        }
+        state.motion={phase:'idle', mode:(state.motion&&state.motion.mode)||'cmj', batch:{trials:[], startedAt:null}}; render();
       }
       else if(act==='toggleTheme'){ DB.settings.theme = DB.settings.theme==='dark'?'light':'dark'; applyTheme(); saveDB(); render(); }
       else if(act==='toggleMode'){
@@ -2148,6 +2291,7 @@ function bindEvents(){
   if(bfDate) bfDate.onchange = ()=>{ state.currentSession.date = bfDate.value; };
   document.querySelectorAll('.navitem').forEach(el=>{
     el.onclick = ()=>{
+      if(!leaveMotionTestIfConfirmed()) return;
       const nav = el.dataset.nav;
       if(nav==='workout' && state.currentSession){ state.screen='today'; }
       else { state.screen = nav; }
@@ -2160,36 +2304,53 @@ function bindEvents(){
 // 點擊的當下呼叫，不能延遲），使用者同意後才能監聽 devicemotion 事件；Android／舊版 iOS
 // 沒有這個權限機制，直接監聽即可。這段邏輯無法在沒有真實手機的環境驗證，所以每一步
 // 都包在 try/catch 裡，任何失敗都會停在明確的錯誤訊息，不會讓整個 App 卡住或崩潰。
+// 唯一一套「離開測量頁」的邏輯，底部導覽列跟頁面內的返回鍵都走這裡，不允許有第二套判斷。
+// 規則鎖死：有未存的 batch 就問，確認離開才清空；取消就留在原地，batch 原封不動。
+// 不會有「記憶體留著、下次進來才被清掉」這種中間狀態。
+function leaveMotionTestIfConfirmed(){
+  if(state.screen !== 'motionTest') return true;
+  const hasBatch = state.motion && state.motion.batch && state.motion.batch.trials.length>0;
+  if(hasBatch && !confirm('離開會放棄目前這批未儲存的測量結果，確定要離開嗎？')) return false;
+  if(hasBatch){
+    state.motion = {phase:'idle', mode:(state.motion&&state.motion.mode)||'cmj', batch:{trials:[], startedAt:null}};
+  }
+  return true;
+}
+
 async function startMotionTest(){
+  // batch 是「這次測驗 session」的資料，跟單次 trial 的 phase/result 分開存放。
+  // 這個函式每個階段轉換都只能動 phase/countdown/result/message/samples，
+  // mode 跟 batch 一路帶著走，絕對不能整包覆蓋掉。
   const mode = (state.motion && state.motion.mode) || 'cmj';
-  state.motion = {phase:'requesting', mode};
+  const batch = (state.motion && state.motion.batch) || {trials:[], startedAt:null};
+  state.motion = {phase:'requesting', mode, batch};
   render();
   try{
     if(typeof DeviceMotionEvent === 'undefined'){
-      state.motion = {phase:'error', mode, message:'這個瀏覽器不支援動作感測，無法使用這個功能'};
+      state.motion = {phase:'error', mode, batch, message:'這個瀏覽器不支援動作感測，無法使用這個功能'};
       render(); return;
     }
     if(typeof DeviceMotionEvent.requestPermission === 'function'){
       const perm = await DeviceMotionEvent.requestPermission();
       if(perm !== 'granted'){
-        state.motion = {phase:'error', mode, message:'沒有取得動作感測權限，無法測量'};
+        state.motion = {phase:'error', mode, batch, message:'沒有取得動作感測權限，無法測量'};
         render(); return;
       }
     }
   }catch(e){
-    state.motion = {phase:'error', mode, message:'請求感測權限時發生錯誤：'+e.message};
+    state.motion = {phase:'error', mode, batch, message:'請求感測權限時發生錯誤：'+e.message};
     render(); return;
   }
 
   // 準備階段：給2秒鐘喬好手機位置，倒數期間完全不收集訊號，避免你手忙腳亂造成的雜訊
   await new Promise(resolve=>{
     let count = 2;
-    state.motion = {phase:'ready', mode, countdown:count};
+    state.motion = {phase:'ready', mode, batch, countdown:count};
     render();
     const iv = setInterval(()=>{
       count--;
       if(count<=0){ clearInterval(iv); resolve(); }
-      else { state.motion = {phase:'ready', mode, countdown:count}; render(); }
+      else { state.motion = {phase:'ready', mode, batch, countdown:count}; render(); }
     }, 1000);
   });
 
@@ -2200,9 +2361,9 @@ async function startMotionTest(){
     window.removeEventListener('devicemotion', handler);
     clearTimeout(timeoutId);
     if(result.ok){
-      state.motion = {phase:'done', mode, result, samples};
+      state.motion = {phase:'done', mode, batch, result, samples};
     } else {
-      state.motion = {phase:'error', mode, message:result.reason, samples};
+      state.motion = {phase:'error', mode, batch, message:result.reason, samples};
     }
     render();
   };
@@ -2217,11 +2378,11 @@ async function startMotionTest(){
   try{
     window.addEventListener('devicemotion', handler);
   }catch(e){
-    state.motion = {phase:'error', mode, message:'無法啟動動作感測：'+e.message};
+    state.motion = {phase:'error', mode, batch, message:'無法啟動動作感測：'+e.message};
     render(); return;
   }
 
-  state.motion = {phase:'listening', mode};
+  state.motion = {phase:'listening', mode, batch};
   render();
   timeoutId = setTimeout(()=>{
     finish(mode==='dropjump' ? analyzeDropJumpSamples(samples) : analyzeMotionSamples(samples));
