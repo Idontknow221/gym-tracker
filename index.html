@@ -481,9 +481,21 @@ function programWeekInfo(){
   const block = JUMP_PROGRESSION.find(b => week>=b.weeks[0] && week<=b.weeks[1]) || JUMP_PROGRESSION[JUMP_PROGRESSION.length-1];
   return {week, block, startDate:firstDate};
 }
+
+// 摸高測試——PDF 第9頁明講「這是這份計畫成不成功的關鍵指標」：原地跳摸高 vs 助跑跳摸高的差距，
+// 目標從負的變成 +5cm 以上。純附加資料，跟訓練 session 完全分開記錄。
+function jumpGap(j){ return Math.round((j.approach - j.standing)*10)/10; }
+function jumpTestSummary(){
+  const tests = Array.isArray(DB.jumpTests) ? [...DB.jumpTests].sort((a,b)=> a.date<b.date?-1:1) : [];
+  if(!tests.length) return null;
+  const latest = tests[tests.length-1];
+  const gaps = tests.map(jumpGap);
+  const bestGap = Math.max(...gaps);
+  return { latest, latestGap: jumpGap(latest), bestGap, trend: gaps, count: tests.length };
+}
 const HOME_MAIN = ["Bulgarian Split Squat","DB Floor Press","DB Deadlift","DB Shoulder Press"];
 
-let DB = {sessions:[], notes:[], bodyweight:[], settings:{theme:"light", mode:"gym"}};
+let DB = {sessions:[], notes:[], bodyweight:[], jumpTests:[], settings:{theme:"light", mode:"gym"}};
 
 // 若不是在 Claude 對話框裡開啟（例如加到 iPhone 主畫面獨立執行），
 // window.storage 不存在，改用瀏覽器內建的 localStorage 當備援，行為對 App 其餘部分完全透明。
@@ -503,7 +515,7 @@ let state = {screen:"home", currentDay:null, currentSession:null, exIndex:0, tim
    weight / reps / rir / date / note / bodyweight。這條規則由
    「資料指紋」在程式層強制，不是靠自律。
    ============================================================ */
-const CURRENT_SCHEMA = 2;
+const CURRENT_SCHEMA = 3;
 
 /* 舊資料種子（SEED）。
    用途：把手機上舊版的資料直接烘進這個檔案，開啟就有，不用手動貼上匯入。
@@ -538,6 +550,8 @@ function dbFingerprint(db){
     bwCount: Array.isArray(db.bodyweight) ? db.bodyweight.length : 0,
     bwSum: Array.isArray(db.bodyweight) ? Math.round(db.bodyweight.reduce((a,b)=>a+(Number(b.weight)||0),0)*1000)/1000 : 0,
     noteCount: Array.isArray(db.notes) ? db.notes.length : 0,
+    jumpTestCount: Array.isArray(db.jumpTests) ? db.jumpTests.length : 0,
+    jumpTestSum: Array.isArray(db.jumpTests) ? Math.round(db.jumpTests.reduce((a,j)=>a+(Number(j.standing)||0)+(Number(j.approach)||0),0)*1000)/1000 : 0,
     firstDate: dates[0]||null,
     lastDate: dates[dates.length-1]||null
   };
@@ -582,6 +596,22 @@ const MIGRATIONS = [
         if(typeof s.checkin.soreness!=='number') s.checkin.soreness = null;
       });
       db.schemaVersion = 2;
+    }
+  },
+  {
+    // v3：三個純附加欄位——摸高測試（PDF 明確標示的關鍵指標）、Deload 標記（照課表
+    // 規則主動減量的那週，不該被連續卡關偵測誤判）、睡眠時數（卡關檢查清單第一項）。
+    // 全部選填，全部補 null／false／[]，不改動任何既有的訓練數值。
+    from:2, to:3, name:'add-jumptest-deload-sleep', mutatesValues:false,
+    guard: db => db.schemaVersion===undefined || db.schemaVersion<3,
+    up: db => {
+      if(!Array.isArray(db.jumpTests)) db.jumpTests = [];
+      db.sessions.forEach(s=>{
+        if(typeof s.deload!=='boolean') s.deload = false;
+        if(!s.checkin || typeof s.checkin!=='object') s.checkin = {energy:null, soreness:null, sleepHours:null};
+        if(typeof s.checkin.sleepHours!=='number') s.checkin.sleepHours = null;
+      });
+      db.schemaVersion = 3;
     }
   }
 ];
@@ -738,6 +768,7 @@ function recentPerformances(exName, n){
   const out = [];
   for(let i=DB.sessions.length-1; i>=0 && out.length<n; i--){
     const s = DB.sessions[i];
+    if(s.deload) continue; // Deload 週是照課表規則主動減量，不能拿來判斷「有沒有進步」
     const ex = s.exercises.find(e=>e.def.n===exName);
     if(ex && ex.sets.some(st=>st.done)) out.push({date:s.date, sets:ex.sets.filter(st=>st.done)});
   }
@@ -958,6 +989,12 @@ function renderToday(){
       <p style="font-size:13.5px; line-height:1.6; margin:6px 0 0">${(sess.mode==='home'?WARMUP_HOME:WARMUP_GYM)[day]}</p>
     </div>` : ''}
 
+    <div class="util-row" style="border-bottom:none; padding-top:14px">
+      <span>這次是 Deload 減量週</span>
+      <div class="toggle ${sess.deload?'on':''}" data-action="toggleDeload"></div>
+    </div>
+    ${sess.deload ? `<p class="muted" style="font-size:12px; margin:-4px 0 0">組數／重量本來就會比平常低，不會被算進「連續卡關」判斷</p>` : ''}
+
     <div style="display:flex; align-items:baseline; gap:8px; margin:18px 0 2px">
       <span class="figure f-big">${doneSets}</span>
       <span class="figure" style="font-size:20px; color:var(--faint)">/ ${totalSets}</span>
@@ -1160,6 +1197,11 @@ function renderComplete(){
         ${[1,2,3,4,5].map(n=>`<div class="check" data-action="setSoreness" data-val="${n}" style="height:38px; font-family:var(--rounded); font-weight:800; font-size:14px; ${sess.checkin&&sess.checkin.soreness===n?'background:var(--mark); border-color:var(--mark); color:var(--void)':''}">${n}</div>`).join('')}
       </div>
     </div>
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px">
+      <span class="muted" style="font-size:13px; width:56px; flex-shrink:0">睡眠</span>
+      <input type="number" inputmode="decimal" id="sleepHoursInput" placeholder="昨晚睡幾小時（選填）"
+        value="${sess.checkin&&sess.checkin.sleepHours!==null?sess.checkin.sleepHours:''}" style="flex:1">
+    </div>
 
     <h3>訓練筆記（選填）</h3>
     <textarea id="sessionNote" placeholder="睡眠、精神、疼痛、技術問題...">${escapeHtml(sess.note||'')}</textarea>
@@ -1235,11 +1277,13 @@ function renderSessionDetail(){
         </div>
       </div>`;
     }).join('')}
-    ${(s.checkin&&(s.checkin.energy||s.checkin.soreness)) ? `
+    ${(s.checkin&&(s.checkin.energy||s.checkin.soreness||s.checkin.sleepHours)) ? `
     <div class="readout" style="margin-top:4px">
       ${s.checkin.energy?`<div><span class="label">精力</span><b>${s.checkin.energy}<span style="font-size:14px; color:var(--faint)">/5</span></b></div>`:''}
       ${s.checkin.soreness?`<div><span class="label">痠痛</span><b>${s.checkin.soreness}<span style="font-size:14px; color:var(--faint)">/5</span></b></div>`:''}
+      ${s.checkin.sleepHours?`<div><span class="label">睡眠</span><b>${s.checkin.sleepHours}<span style="font-size:14px; color:var(--faint)">h</span></b></div>`:''}
     </div>` : ''}
+    ${s.deload ? `<div class="tag tag-mid" style="margin-top:8px">Deload 減量週</div>` : ''}
     ${s.note ? `<h3>訓練筆記</h3><div class="note"><p style="font-size:14px; margin:0">${escapeHtml(s.note)}</p></div>` : ''}
     <div style="height:20px"></div>
   `;
@@ -1410,6 +1454,32 @@ function consistencyCard(){
     </div>`;
 }
 
+// 摸高測試卡片：PDF 自己點名的關鍵指標，放在階段卡片正下方，跟「12週目標」放在一起看。
+function jumpTestCard(){
+  const s = jumpTestSummary();
+  if(!s) return `
+    <div style="padding:16px 0; border-bottom:1px solid var(--line2)">
+      <div class="label">摸高測試・關鍵指標</div>
+      <p class="muted" style="font-size:12.5px; margin-top:8px; line-height:1.6">
+        PDF 說這是整份計畫成不成功的關鍵指標，但還沒有任何紀錄。到「設定」頁可以記錄第一次。
+      </p>
+    </div>`;
+  const goalMet = s.latestGap >= 5;
+  return `
+    <div style="padding:16px 0; border-bottom:1px solid var(--line2)">
+      <div style="display:flex; justify-content:space-between; align-items:baseline">
+        <div class="label">摸高測試・關鍵指標</div>
+        <span class="delta ${goalMet?'':'flat'}">${goalMet?'已達標':'目標 +5cm'}</span>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:8px; margin-top:8px">
+        <span class="figure f-mid" style="color:${s.latestGap>0?'var(--mark)':'var(--danger)'}">${s.latestGap>0?'+':''}${s.latestGap}</span>
+        <span class="muted" style="font-size:12.5px">cm・助跑跳比原地跳${s.latestGap>=0?'高':'矮'}（${fmtDate(s.latest.date)}）</span>
+      </div>
+      ${s.trend.length>1 ? sparkline(s.trend) : ''}
+      ${s.count>1 ? `<div class="muted" style="font-size:12px; margin-top:6px">歷史最佳 ${s.bestGap>0?'+':''}${s.bestGap}cm・共測過 ${s.count} 次</div>` : ''}
+    </div>`;
+}
+
 function renderPhaseCard(){
   const info = programWeekInfo();
   const pct = info.week/12*100;
@@ -1432,7 +1502,7 @@ function renderPhaseCard(){
 }
 
 function renderProgress(){
-  const phaseHtml = renderPhaseCard();
+  const phaseHtml = renderPhaseCard() + jumpTestCard();
   const insightsHtml = muscleVolumeCard() + mainLiftsSummaryCard() + consistencyCard();
   const mainLifts = DB.settings.mode==='home' ? HOME_MAIN : GYM_MAIN;
   const allNames = new Set();
@@ -1467,6 +1537,27 @@ const DELOAD_SIGNS = [
   "摸高比最好的那次低 3cm 以上","睡不好或睡不著",
   "不想進健身房、提不起勁","熱身時同樣重量感覺特別重"
 ];
+// 這6項訊號裡，只有「連續退步的動作數」跟「摸高退步幅度」是 App 能直接從資料算出來的，
+// 其餘4項是主觀感受，沒有對應的量化資料——刻意不自己發明門檻去猜，寧可誠實顯示
+// 「需要自行評估」，也不要編一個假的判斷去冒充有在幫你分析。
+function checkDeloadSigns(){
+  const mains = DB.settings.mode==='home' ? HOME_MAIN : GYM_MAIN;
+  const plateauCount = mains.filter(n=>{
+    const def = Object.values(PROGRAM).flatMap(d=>d.exercises).find(e=>e.n===n && e.main);
+    return def && suggestNextLoad(def) && suggestNextLoad(def).plateau;
+  }).length;
+  const jt = jumpTestSummary();
+  const jumpDropped = jt && (jt.bestGap - jt.latestGap >= 3);
+  return [
+    {checkable:true, triggered: plateauCount>=2, detail: plateauCount>0 ? `目前 ${plateauCount} 個主力動作連續卡關` : null},
+    {checkable:false},
+    {checkable:true, triggered: !!jumpDropped, detail: jt ? `最新摸高 ${jt.latestGap>=0?'+':''}${jt.latestGap}cm，歷史最佳 ${jt.bestGap>=0?'+':''}${jt.bestGap}cm` : null},
+    {checkable:false},
+    {checkable:false},
+    {checkable:false}
+  ];
+}
+
 const STUCK_CHECKLIST = [
   {n:"睡眠",how:"最近有幾天沒睡到 7 小時？先修睡眠，其他都先不要動"},
   {n:"吃得夠不夠",how:"體重在掉？每天多吃 200 大卡，觀察兩週"},
@@ -1504,7 +1595,14 @@ function renderReference(){
     <h3>該減量了嗎（DELOAD）</h3>
     <p class="muted" style="font-size:12.5px">不用固定每 4 週休一次。出現下面任 3 項，下週就減量：</p>
     <div class="tl" style="padding-left:0; margin-top:4px">
-      ${DELOAD_SIGNS.map(s=>`<div style="padding:10px 0; border-bottom:1px solid var(--line2); font-size:13.5px">${s}</div>`).join('')}
+      ${DELOAD_SIGNS.map((s,i)=>{
+        const c = checkDeloadSigns()[i];
+        if(!c.checkable) return `<div style="padding:10px 0; border-bottom:1px solid var(--line2); font-size:13.5px">${s}<span class="muted" style="font-size:11px; display:block; margin-top:2px">需要自行評估，App 沒有對應資料</span></div>`;
+        return `<div style="padding:10px 0; border-bottom:1px solid var(--line2); font-size:13.5px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px">
+          <div><div>${s}</div>${c.detail?`<div class="muted" style="font-size:11px; margin-top:2px">${c.detail}</div>`:''}</div>
+          <span class="tag ${c.triggered?'tag-mark':'tag-mid'}" style="flex-shrink:0">${c.triggered?'符合':'目前沒有'}</span>
+        </div>`;
+      }).join('')}
     </div>
 
     <h3>卡關了怎麼辦</h3>
@@ -1554,11 +1652,25 @@ function renderMore(){
       <input type="number" inputmode="decimal" id="bwInput" placeholder="kg">
       <button class="btn btn-sm" data-action="logBW" style="flex:0 0 auto">記錄</button>
     </div>
+    ${DB.bodyweight.length>1 ? sparkline([...DB.bodyweight].sort((a,b)=>a.date<b.date?-1:1).map(b=>b.weight)) : ''}
     ${DB.bodyweight.length ? `<div class="util" style="margin-top:12px">
       ${[...DB.bodyweight].reverse().slice(0,6).map(b=>`<div class="util-row" style="padding:11px 0">
         <span class="k">${fmtDate(b.date)}</span>
         <span style="font-family:var(--rounded); font-weight:700">${b.weight} kg</span></div>`).join('')}
     </div>` : `<p class="muted" style="font-size:12.5px; margin-top:8px">還沒有紀錄。體重是判斷吃得夠不夠的唯一依據。</p>`}
+
+    <h3>摸高測試</h3>
+    <p class="muted" style="font-size:12px; margin-bottom:8px">PDF 建議每 2 週測一次，記錄原地跳跟助跑跳各自的摸高高度</p>
+    <div style="display:flex; gap:9px; margin-bottom:9px">
+      <input type="number" inputmode="decimal" id="jtStanding" placeholder="原地跳 cm">
+      <input type="number" inputmode="decimal" id="jtApproach" placeholder="助跑跳 cm">
+    </div>
+    <button class="btn btn-sm" data-action="logJumpTest" style="width:100%">記錄這次測試</button>
+    ${DB.jumpTests.length ? `<div class="util" style="margin-top:12px">
+      ${[...DB.jumpTests].sort((a,b)=>a.date<b.date?1:-1).slice(0,6).map(j=>`<div class="util-row" style="padding:11px 0">
+        <span class="k">${fmtDate(j.date)}</span>
+        <span style="font-family:var(--rounded); font-weight:700; color:${jumpGap(j)>0?'var(--mark)':'var(--danger)'}">${jumpGap(j)>0?'+':''}${jumpGap(j)}cm</span></div>`).join('')}
+    </div>` : ''}
 
     <h3>資料版本</h3>
     <div class="util">
@@ -1615,7 +1727,8 @@ function newSession(day, isBackfill){
     date: todayISO(),
     note: '',
     backfill: !!isBackfill,
-    checkin: {energy:null, soreness:null},
+    checkin: {energy:null, soreness:null, sleepHours:null},
+    deload: false,
     exercises: PROGRAM[day].exercises.map(def=>({
       def: def,
       sets: Array.from({length:def.sets}, ()=>({weight:null,reps:null,rir:def.type==='time'?null:'',done:false}))
@@ -1673,6 +1786,10 @@ function bindEvents(){
       else if(act==='saveAndFinish'){
         const note = document.getElementById('sessionNote').value;
         state.currentSession.note = note;
+        const sleepEl = document.getElementById('sleepHoursInput');
+        const sleepVal = sleepEl ? Number(sleepEl.value) : NaN;
+        state.currentSession.checkin = state.currentSession.checkin || {energy:null, soreness:null, sleepHours:null};
+        state.currentSession.checkin.sleepHours = (sleepEl && sleepEl.value!=='' && !isNaN(sleepVal)) ? sleepVal : null;
         DB.sessions.push(state.currentSession);
         DB.sessions.sort((a,b)=> a.date===b.date ? (a.id<b.id?-1:1) : (a.date<b.date?-1:1));
         saveDB();
@@ -1688,6 +1805,7 @@ function bindEvents(){
         DB.settings.mode = DB.settings.mode==='home'?'gym':'home';
         applyMode(); saveDB(); render();
       }
+      else if(act==='toggleDeload'){ state.currentSession.deload = !state.currentSession.deload; render(); }
       else if(act==='setEnergy'){
         state.currentSession.checkin = state.currentSession.checkin || {energy:null, soreness:null};
         state.currentSession.checkin.energy = Number(el.dataset.val);
@@ -1702,6 +1820,12 @@ function bindEvents(){
         const v = Number(document.getElementById('bwInput').value);
         if(!v){ alert('請輸入體重'); return; }
         DB.bodyweight.push({date:todayISO(), weight:v}); saveDB(); render();
+      }
+      else if(act==='logJumpTest'){
+        const standing = Number(document.getElementById('jtStanding').value);
+        const approach = Number(document.getElementById('jtApproach').value);
+        if(!standing || !approach){ alert('原地跳跟助跑跳的高度都要填'); return; }
+        DB.jumpTests.push({date:todayISO(), standing, approach}); saveDB(); render();
       }
       else if(act==='exportData'){ document.getElementById('exportBox').value = JSON.stringify(DB, null, 2); }
       else if(act==='importData'){
@@ -1741,7 +1865,7 @@ function bindEvents(){
       }
       else if(act==='resetData'){
         if(confirm('確定要清除所有訓練紀錄嗎？此動作無法復原。')){
-          DB = {schemaVersion:CURRENT_SCHEMA, sessions:[], notes:[], bodyweight:[], settings:DB.settings, meta:DB.meta||{}};
+          DB = {schemaVersion:CURRENT_SCHEMA, sessions:[], notes:[], bodyweight:[], jumpTests:[], settings:DB.settings, meta:DB.meta||{}};
           saveDB(); render();
         }
       }
