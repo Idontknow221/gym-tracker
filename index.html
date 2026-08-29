@@ -236,6 +236,8 @@ textarea{resize:vertical; min-height:76px; font-family:var(--sans); font-weight:
 .tag-mid{background:var(--line2); color:var(--faint);}
 .note{background:var(--riser); border-left:2px solid var(--mark); border-radius:0 12px 12px 0;
   padding:12px 14px; margin:10px 0;}
+.card{background:var(--riser); border-radius:14px; padding:16px; margin:0 0 14px;}
+.card .plot{margin:0 0 2px;}
 .empty{padding:44px 0 30px; text-align:center;}
 .empty .figure{color:var(--line); font-size:52px;}
 .divider{height:1px; background:var(--line2); margin:14px 0;}
@@ -307,6 +309,38 @@ textarea{resize:vertical; min-height:76px; font-family:var(--sans); font-weight:
 function g(n,sets,reps,rir,rest,weighted,type,extra){ return Object.assign({n,sets,reps,rir,rest,weighted,type},extra||{}); }
 const HOME_DIFF = "難度不夠時依序：加次數→放慢節奏→加停頓→加大動作範圍→改單邊→縮短休息";
 
+// 器材沒有／維修中的替代動作——直接用 PDF「健身房→居家動作對照表」的對應關係，
+// 不自己發明替代動作。大部分替代動作剛好就是居家版本身已經定義好的動作，直接沿用，
+// 不用另外重寫一份。次數怎麼調整也是照 PDF 表訂的比例，不是自己估的。
+const GYM_SUBSTITUTE = {
+  "Back Squat": {sub:"Bulgarian Split Squat", note:"5下 → 12–20下"},
+  "Trap-bar Deadlift": {sub:"DB Deadlift", note:"5下 → 12–15下"},
+  "RDL": {sub:"Single-leg RDL", note:"8下 → 10下/邊"},
+  "Hip Thrust": {sub:"Single-leg Hip Thrust", note:"10下 → 15下/邊"},
+  "Leg Press": {sub:"Reverse Lunge", note:"12下 → 12下/邊"},
+  "Leg Curl": {sub:"Sliding Leg Curl", note:"10下 → 10–12下"},
+  "Bench Press": {sub:"DB Floor Press", note:"5下 → 10–12下"},
+  "Incline DB Press": {sub:"Feet-elevated Push-up", note:"10下 → 力竭前1下"},
+  "Chest-Supported Row": {sub:"One-arm DB Row", note:"12下 → 12–15下"},
+  "Lat Pulldown": {sub:"Pull-up 或 Inverted Row", note:"15下 → 15下（用彈力帶輔助）"},
+  "Standing OHP": {sub:"DB Shoulder Press", note:"6下 → 8–12下"},
+  "Face Pull": {sub:"Reverse Fly", note:"15下 → 18下"},
+  "Overhead Extension": {sub:"Bench Dip", note:"12下 → 15下"},
+  "Standing Calf Raise": {sub:"Single-leg Calf Raise", note:"10下 → 15–20下/邊"},
+  "Seated Calf Raise": {sub:"Seated Calf Raise（腿壓啞鈴）", note:"12下 → 20下"}
+};
+
+// 找替代動作的定義——不限同一天，因為替代動作本質上是同一個動作，換到哪天都是同一個定義。
+// Day5選配日沒有專屬居家版本，Face Pull的替代（Reverse Fly）要從Day4才找得到，
+// 限制在同一天找的話會漏掉這種情況。
+function findSubstituteDef(name){
+  for(const day of Object.keys(PROGRAM_HOME)){
+    const found = PROGRAM_HOME[day].exercises.find(e=>e.n===name);
+    if(found) return found;
+  }
+  return null;
+}
+
 const WARMUP_GYM = {
   1: "腳踏車 3 分鐘 → 弓箭步伸展 / 腿後擺盪 / 深蹲抱膝 / 腳踝前推，各 8 下 → 臀橋 15 下 → 側走彈力帶 10 步/邊",
   2: "滑輪繩索臉拉 15 下 × 2 → 肩繞環 10 圈 → 臥推空槓 10 下",
@@ -327,7 +361,7 @@ const PROGRAM_GYM = {
   ]},
   2: {name:"Day 2 — 上半身A", exercises:[
     g("Bench Press",4,"5",2,180,true,"reps",{main:true,inc:2.5,cue:"槓碰胸再推。熱身組：空槓10 → 40kg 5 → 50kg 3 → 57.5kg 1"}),
-    g("Pull-up",4,"6","1–2",150,true,"reps",{main:true,inc:2.5,cue:"選一條彈力帶讓你剛好能做 6 下且還剩 1 下。胸口靠近槓，下放到手臂完全打直"}),
+    g("Pull-up",4,"6","1–2",150,false,"reps",{cue:"選一條彈力帶讓你剛好能做 6 下且還剩 1 下。胸口靠近槓，下放到手臂完全打直"}),
     g("Incline DB Press",3,"10",1,120,true,"reps",{cue:"椅背 30 度"}),
     g("Chest-Supported Row",3,"12",1,120,true,"reps",{cue:"胸靠著墊子，肩胛骨用力夾"}),
     g("Seated DB Press",3,"10","1–2",120,true,"reps"),
@@ -344,7 +378,7 @@ const PROGRAM_GYM = {
     g("Seated Calf Raise",3,"12",1,90,true,"reps",{cue:"坐姿練的肌肉和站姿不一樣，兩個都要"})
   ]},
   4: {name:"Day 4 — 上半身B", exercises:[
-    g("Pull-up Cluster",5,"3",2,120,true,"reps",{cue:"只做 3 下就停，不要做到力竭。每一下都要標準：胸口靠近槓、下放到手臂完全直"}),
+    g("Pull-up Cluster",5,"3",2,120,false,"reps",{cue:"只做 3 下就停，不要做到力竭。每一下都要標準：胸口靠近槓、下放到手臂完全直"}),
     g("Standing OHP",4,"6",2,150,true,"reps",{main:true,inc:2.5,cue:"核心收緊不要挺腰"}),
     g("Cable Row",3,"12",1,120,true,"reps",{cue:"拉到腹部，肩胛夾緊停 1 秒"}),
     g("Lat Pulldown",3,"15","0–1",90,true,"reps",{cue:"寬握。這是練背寬（V型）的主力。可以做到快力竭"}),
@@ -381,7 +415,7 @@ const PROGRAM_HOME = {
   ]},
   2: {name:"Day 2 — 上半身A（居家）", exercises:[
     g("DB Floor Press",4,"10–12",1,150,true,"reps",{main:true,home:true,diffNote:HOME_DIFF,cue:"手肘碰地就推起來。下放 3 秒"}),
-    g("Pull-up",4,"6","1–2",150,true,"reps",{home:true,diffNote:"沒有單槓時，改做桌下反向划船 3 組 × 15 下",cue:"選一條彈力帶讓你剛好能做 6 下且還剩 1 下"}),
+    g("Pull-up",4,"6","1–2",150,false,"reps",{home:true,diffNote:"沒有單槓時，改做桌下反向划船 3 組 × 15 下",cue:"選一條彈力帶讓你剛好能做 6 下且還剩 1 下"}),
     g("Feet-elevated Push-up",3,"近力竭前1下",1,120,false,"reps",{home:true,diffNote:HOME_DIFF,cue:"太輕鬆就背後放個背包裝書"}),
     g("One-arm DB Row",3,"12/邊",1,120,true,"reps",{home:true,diffNote:HOME_DIFF,cue:"拉到腰側，頂點停 1 秒"}),
     g("DB Shoulder Press",3,"10–12","1–2",120,true,"reps",{home:true,diffNote:HOME_DIFF}),
@@ -435,7 +469,7 @@ function dn(n){ return EX_ZH[n] || n; }
 function enSub(n){ return EX_ZH[n] ? n : ''; }
 
 let PROGRAM = PROGRAM_GYM;
-const GYM_MAIN = ["Back Squat","Bench Press","Trap-bar Deadlift","Standing OHP","RDL","Hip Thrust","Pull-up"];
+const GYM_MAIN = ["Back Squat","Bench Press","Trap-bar Deadlift","Standing OHP","RDL","Hip Thrust"];
 
 // PDF「JUMP PROGRESSION」表：12 週分成 6 個兩週區塊，Day1（垂直跳）/ Day3（彈跳）
 // 各自的強度安排。這裡逐字對應 PDF 表格內容，不自行創造規則。
@@ -484,158 +518,296 @@ function programWeekInfo(){
 
 // 摸高測試——PDF 第9頁明講「這是這份計畫成不成功的關鍵指標」：原地跳摸高 vs 助跑跳摸高的差距，
 // 目標從負的變成 +5cm 以上。純附加資料，跟訓練 session 完全分開記錄。
-// ============================================================
-// 動作感測跳躍測試（實驗性）
-// 原理：起跳瞬間身體進入短暫自由落體，加速度計量到的合力會掉到接近0；
-// 落地瞬間會有明顯撞擊尖峰。抓這兩個時間點的間隔＝飛行時間，
-// 用拋體運動公式反推跳躍高度：h = g × t² / 8。
-// 準確度明確不如測力板或慢動作攝影，僅供參考趨勢，不是精密量測。
-// ============================================================
-const MOTION_G = 9.81;
-const MOTION_FREEFALL_THRESHOLD = 3.0;   // m/s²，低於這個視為「接近自由落體」
-const MOTION_IMPACT_THRESHOLD = 15.0;    // m/s²，高於這個視為「落地衝擊」
-const MOTION_MIN_CONTACT_SAMPLES = 2;    // 至少連續幾個取樣點都在自由落體區間，才算真的起跳（濾掉單一雜訊尖刺）
-
-// 純函式：吃一串 {t, mag} 取樣點（t=毫秒時間戳, mag=合加速度量值），回傳偵測結果。
-// 拆成獨立函式是為了不需要真的手機感測器也能測試演算法本身對不對。
-function analyzeMotionSamples(samples){
-  if(!samples || samples.length<4) return {ok:false, reason:'取樣點太少'};
-  let freefallStart = null, freefallStreak = 0, takeoffIdx = null, landIdx = null;
-  for(let i=0;i<samples.length;i++){
-    const m = samples[i].mag;
-    if(takeoffIdx===null){
-      if(m < MOTION_FREEFALL_THRESHOLD){
-        freefallStreak++;
-        if(freefallStreak>=MOTION_MIN_CONTACT_SAMPLES && freefallStart===null) freefallStart = i - MOTION_MIN_CONTACT_SAMPLES + 1;
-        if(freefallStreak>=MOTION_MIN_CONTACT_SAMPLES) takeoffIdx = freefallStart;
-      } else {
-        freefallStreak = 0; freefallStart = null;
-      }
-    } else if(landIdx===null){
-      if(m > MOTION_IMPACT_THRESHOLD){ landIdx = i; break; }
-    }
-  }
-  if(takeoffIdx===null) return {ok:false, reason:'沒有偵測到起跳（自由落體訊號）'};
-  if(landIdx===null) return {ok:false, reason:'沒有偵測到落地（衝擊訊號）'};
-  const flightMs = samples[landIdx].t - samples[takeoffIdx].t;
-  if(flightMs<=0 || flightMs>1200) return {ok:false, reason:'飛行時間不合理（'+flightMs+'ms），可能是雜訊'};
-  const flightSec = flightMs/1000;
-  const heightCm = Math.round((MOTION_G * flightSec * flightSec / 8) * 100 * 10) / 10;
-  return {ok:true, flightMs: Math.round(flightMs), heightCm, takeoffMs: Math.round(samples[takeoffIdx].t), landMs: Math.round(samples[landIdx].t)};
-}
-
-// 落下跳版本：從箱子踏下 → 落地(觸地開始) → 短暫觸地 → 反彈起跳(觸地結束) → 飛行 → 最終落地。
-// 觸地時間是 RSI 的分母，通常只有0.15-0.3秒——這麼短的窗口，手機加速度計本來就比專業
-// 測力板粗糙很多，這裡的數字誤差會比純跳躍高度測試更大，UI 上會用更明顯的字眼提醒。
-function analyzeDropJumpSamples(samples){
-  if(!samples || samples.length<6) return {ok:false, reason:'取樣點太少'};
-  let land1Idx=null, takeoffIdx=null, land2Idx=null, freefallStreak=0, freefallStart=null;
-  for(let i=0;i<samples.length;i++){
-    const m = samples[i].mag;
-    if(land1Idx===null){
-      if(m > MOTION_IMPACT_THRESHOLD) land1Idx = i; // 從箱子踏下、第一次觸地
-      continue;
-    }
-    if(takeoffIdx===null){
-      if(m < MOTION_FREEFALL_THRESHOLD){
-        freefallStreak++;
-        if(freefallStreak>=MOTION_MIN_CONTACT_SAMPLES && freefallStart===null) freefallStart = i - MOTION_MIN_CONTACT_SAMPLES + 1;
-        if(freefallStreak>=MOTION_MIN_CONTACT_SAMPLES) takeoffIdx = freefallStart;
-      } else {
-        freefallStreak = 0; freefallStart = null;
-      }
-      continue;
-    }
-    if(land2Idx===null){
-      if(m > MOTION_IMPACT_THRESHOLD){ land2Idx = i; break; }
-    }
-  }
-  if(land1Idx===null) return {ok:false, reason:'沒有偵測到第一次觸地（從箱子踏下）'};
-  if(takeoffIdx===null) return {ok:false, reason:'沒有偵測到反彈起跳'};
-  if(land2Idx===null) return {ok:false, reason:'沒有偵測到最終落地'};
-  const contactMs = samples[takeoffIdx].t - samples[land1Idx].t;
-  const flightMs = samples[land2Idx].t - samples[takeoffIdx].t;
-  if(contactMs<=0 || contactMs>1000) return {ok:false, reason:'觸地時間不合理（'+Math.round(contactMs)+'ms），可能是雜訊'};
-  if(flightMs<=0 || flightMs>1200) return {ok:false, reason:'飛行時間不合理（'+Math.round(flightMs)+'ms），可能是雜訊'};
-  const flightSec = flightMs/1000, contactSec = contactMs/1000;
-  const heightCm = Math.round((MOTION_G * flightSec * flightSec / 8) * 100 * 10) / 10;
-  const rsi = Math.round((heightCm/100/contactSec) * 100) / 100; // RSI = 跳躍高度(m) ÷ 觸地時間(s)，這是最常被引用的經典定義
-  return {ok:true, flightMs: Math.round(flightMs), contactMs: Math.round(contactMs), heightCm, rsi,
-    land1Ms: Math.round(samples[land1Idx].t), takeoffMs: Math.round(samples[takeoffIdx].t), land2Ms: Math.round(samples[land2Idx].t)};
-}
-
-// 觸地時間超過250ms，代表這不是真正的「反應性」落下跳（比較像分開的踏下+另一次跳），
-// 這種情況下算出來的 RSI 不能代表反應力，標成無效，但高度數字本身仍納入平均——
-// 只是不代表精準，這套方法的準確度天花板本來就有限。
-const RSI_MAX_VALID_CONTACT_MS = 250;
-
-// 這批裡到底有沒有「真的有效」的 RSI——不能只看 type==='dropjump' 就顯示 RSI 標籤，
-// 觸地時間過長或被捨棄的那幾次不算數。新格式從 trials[] 逐筆檢查；沒有 trials 的舊資料
-// 只能退回看當時存的 rsi/contactMs（那個年代還沒有 flag 系統，只能做到這樣）。
-function entryValidRsi(t){
-  if(t.trials){
-    const valid = t.trials.filter(tr => tr.type==='dropjump' && tr.rsi!==undefined && !tr.rsiInvalid && tr.flag!=='RETEST_DISCARDED');
-    if(valid.length===0) return null;
-    return Math.round((valid.reduce((a,tr)=>a+tr.rsi,0)/valid.length) * 100) / 100;
-  }
-  if(t.rsi!==undefined && (t.contactMs===undefined || t.contactMs<=RSI_MAX_VALID_CONTACT_MS)) return t.rsi;
-  return null;
-}
-
-// 把一次感測分析結果包成標準的 trial 物件，決定它的 flag 跟要不要算進平均。
-function makeTrial(mode, result, flag){
-  const trial = {
-    at: new Date().toISOString(), type: mode,
-    flightMs: result.flightMs, heightCm: result.heightCm,
-    flag: flag, includedInSummary: flag==='VALID'
-  };
-  if(result.contactMs !== undefined) trial.contactMs = result.contactMs;
-  if(result.rsi !== undefined){
-    if(result.contactMs > RSI_MAX_VALID_CONTACT_MS && flag==='VALID'){
-      trial.flag = 'INVALID_CONTACT';
-      trial.includedInSummary = true; // 高度仍算數，只有 RSI 不可信
-      trial.rsiInvalid = true;
-    }
-    trial.rsi = result.rsi;
-  }
-  return trial;
-}
-
-// 彙總一批 trial：平均的是「高度」本身，不是飛行時間——構念是跳躍高度，文獻慣例也是
-// 平均高度。先平均時間再轉高度在數學上會有 Jensen's inequality 造成的些微偏差，但正常
-// 散度下通常 <0.2cm，遠小於裝置本身的雜訊，不值得為了這個犧牲直覺可解釋性。
-// 絕對不自動刪 outlier，全部 VALID 的都算進去。
-function summarizeTrials(trials){
-  const included = (trials||[]).filter(t=>t.includedInSummary && t.heightCm!==undefined);
-  if(included.length===0) return null;
-  const heights = included.map(t=>t.heightCm);
-  const meanHeightCm = Math.round((heights.reduce((a,b)=>a+b,0)/heights.length) * 10) / 10;
-  const bestHeightCm = Math.max(...heights);
-  const minHeightCm = Math.min(...heights);
-  const maxHeightCm = bestHeightCm;
-  const flightVals = included.map(t=>t.flightMs);
-  const meanFlightMs = Math.round(flightVals.reduce((a,b)=>a+b,0)/flightVals.length);
-  return {n: included.length, meanHeightCm, bestHeightCm, minHeightCm, maxHeightCm, meanFlightMs};
-}
-
-// 統一的寫入邏輯：不管是「只存這一次」還是「存這批平均」，都走這一條路徑，
-// 避免兩套格式繼續分岔。原始的每一筆 trial 都完整保留在 trials 裡，不會因為
-// 存了平均值就把個別測量的原始數字丟掉。
-function saveMotionSession(trials){
-  const summary = summarizeTrials(trials);
-  if(!summary) return false;
-  const entry = {
-    date: todayISO(), type: state.motion.mode||'cmj',
-    n: summary.n, meanHeightCm: summary.meanHeightCm, bestHeightCm: summary.bestHeightCm,
-    minHeightCm: summary.minHeightCm, maxHeightCm: summary.maxHeightCm, meanFlightMs: summary.meanFlightMs,
-    trials: trials
-  };
-  DB.motionTests.push(entry);
-  saveDB();
-  return true;
-}
-
 function jumpGap(j){ return Math.round((j.approach - j.standing)*10)/10; }
+
+// ============================================================
+// 垂直跳測量——My Jump 2 匯入（取代手機加速度計版本）
+// 加速度計法誤差量級（Mascia et al. 2023：16–18cm）跟攝影機/飛行時間法（My Jump 2，
+// 誤差通常在1cm以內）差了30–50倍，不是同一種精準度的資料，所以整個換掉，不是加個選項。
+// RAW（使用者匯入或手動輸入的原始值）跟 DERIVED（App 自己用飛行時間反推的高度）分開存，
+// 兩者互相對照但不互相覆蓋——這條規則跟這份 App 一路的資料誠實原則一致。
+// 高度公式 h(m) = t² × 1.22625（t=飛行時間秒）是 My Jump / My Jump 2 官方採用的 Bosco
+// 公式，不是本 App 自行假設的算法。
+// ============================================================
+const JUMP_TYPES = {CMJ:'反向跳 CMJ', SJ:'蹲踞跳 SJ', DJ:'落地跳 DJ', CMJAS:'擺臂反向跳 CMJAS'};
+const JUMP_MDC_REF_CM = 1.5; // 文獻參考值(SEM/SWC/MDC研究)，不是Kenny個人實測的MDC，只能當粗略參考
+
+// A1/B6：日期解析只信 YYYY-MM-DD 這種無歧義格式，直接拆字串取值，不經過 new Date() 的
+// 時區轉換（那個路徑對 "29/08/2026" 這種格式常常解析錯，對 UTC 邊界也會產生時區位移）。
+// 其他格式一律回傳失敗，讓呼叫端自己決定要怎麼提示使用者，不要用 Date() 亂猜。
+function parseInputDate(str){
+  if(!str) return {ok:false, iso:null};
+  const s = String(str).trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m){
+    const y=Number(m[1]), mo=Number(m[2]), da=Number(m[3]);
+    if(mo>=1 && mo<=12 && da>=1 && da<=31) return {ok:true, iso: m[1]+'-'+m[2]+'-'+m[3]};
+  }
+  return {ok:false, iso:null};
+}
+function jumpDedupKey(e){
+  return [e.date, e.type, e.raw.flightTimeMs, e.raw.heightCm, e.device].join('|');
+}
+function boscoHeightCm(flightTimeMs){
+  if(flightTimeMs===null || flightTimeMs===undefined || isNaN(flightTimeMs) || flightTimeMs<=0) return null;
+  const t = flightTimeMs/1000;
+  return Math.round(t*t*1.22625*100*10)/10;
+}
+
+function detectJumpColumns(headerRow){
+  const norm = s => (s||'').toString().toLowerCase();
+  const find = (keywords)=> headerRow.findIndex(h=> keywords.some(k=> norm(h).indexOf(k)>=0));
+  // B6：height 欄位優先找「jump height」，避免被 Body Height／Athlete Height 這種欄位搶走
+  // （找到的話那筆資料的「身高」會被誤當成「跳躍高度」）。找不到明確的 jump height 才退回
+  // 任何含 height 但不含 body/athlete/standing/person 的欄位。
+  let heightIdx = find(['jump height','跳躍高度']);
+  if(heightIdx===-1){
+    heightIdx = headerRow.findIndex(h=>{
+      const n = norm(h);
+      return n.indexOf('height')>=0 && n.indexOf('body')<0 && n.indexOf('athlete')<0 && n.indexOf('standing')<0 && n.indexOf('person')<0;
+    });
+  }
+  return {
+    date: find(['date','日期']),
+    type: find(['type','jump type','跳躍類型','test']),
+    heightCm: heightIdx,
+    flightTimeMs: find(['flight']),
+    contactTimeMs: find(['contact']),
+    rsi: find(['rsi']),
+    power: find(['power']),
+    velocity: find(['velocity']),
+    force: find(['force'])
+  };
+}
+
+function buildJumpEntry(vals){
+  // vals：已經是解析／輸入後的原始值物件，不管來自 CSV 或手動輸入，走同一套驗證邏輯
+  const num = v => (v===null || v===undefined || v==='' || isNaN(Number(v))) ? null : Number(v);
+  const rawHeight = num(vals.heightCm);
+  const rawFlight = num(vals.flightTimeMs);
+  const rawContact = num(vals.contactTimeMs);
+  const rawRsi = num(vals.rsi);
+  const rawPower = num(vals.power);
+  const rawVelocity = num(vals.velocity);
+  const rawForce = num(vals.force);
+  const flags = [];
+
+  let date = todayISO();
+  if(vals.date){
+    const dp = parseInputDate(vals.date);
+    if(dp.ok) date = dp.iso;
+    else flags.push('日期「'+vals.date+'」格式無法辨識（只認 YYYY-MM-DD），暫用今天日期，請自行檢查');
+  }
+
+  let type = 'CMJ';
+  if(vals.type){
+    const t = vals.type.toString().toUpperCase();
+    if(JUMP_TYPES[t]) type = t;
+    else if(t.indexOf('DROP')>=0 || t.indexOf('DJ')>=0) type='DJ';
+    else if(t.indexOf('SQUAT')>=0) type='SJ';
+    else if(t.indexOf('CMJ')>=0 || t.indexOf('COUNTERMOVEMENT')>=0) type='CMJ';
+    else flags.push('跳躍類型「'+vals.type+'」無法辨識，暫歸類為CMJ');
+  }
+
+  if(rawHeight===null && rawFlight===null) flags.push('沒有高度也沒有飛行時間，這筆資料無法使用');
+  if(rawHeight!==null && (rawHeight<=0 || rawHeight>150)) flags.push('高度數值('+rawHeight+'cm)超出合理範圍，請確認單位');
+  if(rawFlight!==null && rawFlight<50) flags.push('飛行時間('+rawFlight+')小於50，懷疑單位是秒不是毫秒');
+
+  const derivedHeight = boscoHeightCm(rawFlight);
+  if(rawHeight!==null && derivedHeight!==null){
+    const diff = Math.abs(rawHeight - derivedHeight);
+    if(diff > JUMP_MDC_REF_CM) flags.push('匯入高度('+rawHeight+'cm)與飛行時間反推高度('+derivedHeight+'cm)差距'+diff.toFixed(1)+'cm，超出測量誤差合理範圍，請檢查欄位或單位');
+  }
+
+  return {
+    id: 'JM_'+date+'_'+Math.random().toString(36).slice(2,8),
+    date, type, source: vals.source||'manual',
+    device: vals.device || 'My Jump 2',
+    familiarization: !!vals.familiarization,
+    raw: {heightCm:rawHeight, flightTimeMs:rawFlight, contactTimeMs:rawContact, rsi:rawRsi, power:rawPower, velocity:rawVelocity, force:rawForce, sourceRow: vals.sourceRow||null},
+    derived: {heightCm: derivedHeight},
+    status: flags.length ? 'NEEDS_REVIEW' : 'OK',
+    flags
+  };
+}
+
+function jumpDisplayHeight(m){
+  if(m.raw.heightCm!==null && m.raw.heightCm!==undefined) return {value:m.raw.heightCm, from:'匯入值'};
+  if(m.derived.heightCm!==null) return {value:m.derived.heightCm, from:'由飛行時間反推'};
+  return {value:null, from:null};
+}
+
+// B6：處理引號欄位（例如 "August 29, 2026" 裡面包了逗號，不能直接用 split(',') 切開），
+// 逐字元掃描，遇到引號內的逗號不切。
+function splitCsvLine(line, useTab){
+  if(useTab) return line.split('\t').map(s=>s.trim());
+  const result = [];
+  let cur = '', inQuotes = false;
+  for(let i=0;i<line.length;i++){
+    const c = line[i];
+    if(inQuotes){
+      if(c==='"'){
+        if(line[i+1]==='"'){ cur+='"'; i++; } else { inQuotes=false; }
+      } else cur += c;
+    } else {
+      if(c==='"') inQuotes = true;
+      else if(c===','){ result.push(cur); cur=''; }
+      else cur += c;
+    }
+  }
+  result.push(cur);
+  return result.map(s=>s.trim());
+}
+function parseJumpCsvText(text, opts){
+  opts = opts || {};
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length);
+  if(lines.length<2) return {error:'至少需要一行標題列＋一行資料', entries:[]};
+  // B6：整段文字只判斷一次是不是 Tab 分隔（用標題列判斷），不要每行各自判斷——
+  // 不然標題列剛好沒有 Tab、資料列有 Tab 這種情況會切錯欄。Tab 優先於逗號判斷。
+  const useTab = lines[0].indexOf('\t')>=0;
+  const header = splitCsvLine(lines[0], useTab).map(h=>h.trim());
+  const cols = detectJumpColumns(header);
+  const entries = [];
+  for(let i=1;i<lines.length;i++){
+    const row = splitCsvLine(lines[i], useTab).map(c=>c.trim());
+    const get = idx => (idx===-1 || idx===undefined) ? null : row[idx];
+    entries.push(buildJumpEntry({
+      date: get(cols.date), type: get(cols.type), heightCm: get(cols.heightCm),
+      flightTimeMs: get(cols.flightTimeMs), contactTimeMs: get(cols.contactTimeMs),
+      rsi: get(cols.rsi), power: get(cols.power), velocity: get(cols.velocity), force: get(cols.force),
+      source: 'myjump2_import', sourceRow: row.join(' | '),
+      device: opts.device || 'My Jump 2', familiarization: !!opts.familiarization
+    }));
+  }
+  return {error:null, entries, detected:cols, header};
+}
+
+
+function rollingAverage(arr, window){
+  return arr.map((_,i)=>{
+    const start = Math.max(0, i-window+1);
+    const slice = arr.slice(start, i+1);
+    return Math.round(slice.reduce((a,b)=>a+b,0)/slice.length*10)/10;
+  });
+}
+// PHASE 3：14/28天個人化baseline + Signal Quality，CMJ/SJ/DJ分開算(不同動作模式，
+// 不能混在同一個基準裡)。Signal Quality純粹看樣本數(3以下=資料不足，4-5=偏低，6+=尚可)，
+// 這是基本統計常識(樣本越多估計越穩)，不是套用什麼生理學門檻，樣本數本身就是誠實的判準。
+function computeJumpTypeBaseline(type, windowDays){
+  const [ty,tm,td] = todayISO().split('-').map(Number);
+  const today = new Date(ty,tm-1,td);
+  const vals = DB.jumpMeasurements
+    .filter(m=>m.type===type && !m.familiarization && m.status==='OK')
+    .map(m=>({date:m.date, v:jumpDisplayHeight(m).value}))
+    .filter(m=>m.v!==null)
+    .filter(m=>{
+      const [y,mo,d] = m.date.split('-').map(Number);
+      const days = (today - new Date(y,mo-1,d))/86400000;
+      return days>=0 && days<=windowDays;
+    })
+    .map(m=>m.v);
+  if(vals.length<3) return {ok:false, n:vals.length, windowDays, quality:'INSUFFICIENT_DATA'};
+  const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+  const sd = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)*(b-mean),0)/(vals.length-1));
+  const quality = vals.length>=6 ? 'MODERATE' : 'LOW';
+  return {ok:true, n:vals.length, windowDays, mean:Math.round(mean*10)/10, sd:Math.round(sd*100)/100, quality};
+}
+
+function jumpTypeTrendCard(type){
+  const label = JUMP_TYPES[type] || type;
+  const all = DB.jumpMeasurements.filter(m=>m.type===type && !m.familiarization && m.status==='OK').sort((a,b)=>a.date<b.date?-1:1);
+  if(all.length<2) return '';
+
+  // 量測工具換過（例如以後不再用 My Jump 2），不同工具量出來的數字不是同一把尺，不能接在
+  // 同一條趨勢線裡當作連續變化——只取「目前這個工具」最新一段連續的資料來畫圖，
+  // 換工具之前的資料留在歷史紀錄裡，但不混進這張趨勢圖。
+  let runStart = 0;
+  for(let i=all.length-1;i>0;i--){ if(all[i].device !== all[i-1].device){ runStart = i; break; } }
+  const currentRun = all.slice(runStart);
+  const deviceChanged = runStart > 0;
+
+  const heights = currentRun.map(m=>jumpDisplayHeight(m).value).filter(v=>v!==null);
+  if(heights.length<2) return deviceChanged ? `<div class="card" style="margin:0 0 14px">
+    <div class="label">垂直跳趨勢（${label}）</div>
+    <p class="muted" style="font-size:12px">量測工具剛換過（目前：${currentRun[0]?currentRun[0].device:'—'}），還沒有累積到兩筆同一工具的資料，暫時畫不出趨勢</p>
+  </div>` : '';
+
+  const recent = heights.slice(-4);
+  const recentAvg = recent.length ? Math.round(recent.reduce((a,b)=>a+b,0)/recent.length*10)/10 : null;
+  const last = heights[heights.length-1];
+  const b14 = computeJumpTypeBaseline(type, 14);
+  const b28 = computeJumpTypeBaseline(type, 28);
+  const qualityLabel = {INSUFFICIENT_DATA:'資料不足', LOW:'樣本偏少，僅供參考', MODERATE:'樣本尚可'};
+  return `<div class="card" style="margin:0 0 14px">
+    <div class="label">垂直跳趨勢（${label}・${currentRun[0].device}・淡點原始值／實線4次移動平均）</div>
+    ${rollingSparkline(heights, 4)}
+    <div class="muted" style="font-size:12px; margin-top:8px; line-height:1.6">
+      淡點是每次原始數字，實線是4次移動平均——前3個點還沒滿4次，只畫淡點，不會假裝已經有平均線可看。
+      最近一次原始值 ${last}cm，近4次平均 ${recentAvg}cm。
+      文獻參考的測量誤差範圍約 ±${JUMP_MDC_REF_CM}cm（來自其他研究樣本，不是你個人的實測值，只能當「匯入高度跟反推高度差太多可能單位錯」的檢查用，不是你個人的MDC），
+      差距在這個範圍內不能當作「真的進步」，只能說可能還在誤差範圍內。
+      ${deviceChanged?'<br>量測工具換過，這張圖只算換工具之後的資料，之前的紀錄還在歷史清單裡，但沒有接進這條趨勢線。':''}
+    </div>
+    <div class="muted" style="font-size:11px; margin-top:8px; border-top:1px solid var(--line2); padding-top:8px">
+      14天基準：${b14.ok?`${b14.mean}cm（${b14.n}筆・${qualityLabel[b14.quality]}）`:`${qualityLabel[b14.quality]}（${b14.n}筆）`}　
+      28天基準：${b28.ok?`${b28.mean}cm（${b28.n}筆・${qualityLabel[b28.quality]}）`:`${qualityLabel[b28.quality]}（${b28.n}筆）`}
+      <br>訊號品質偏低或資料不足時，這裡的數字只能當參考，不會拿去驅動任何 readiness 或 deload 判斷——目前這個App裡兩者本來就完全分開，沒有接在一起。
+    </div>
+  </div>`;
+}
+
+function jumpTrendCard(){
+  return Object.keys(JUMP_TYPES).map(t=>jumpTypeTrendCard(t)).join('');
+}
+
+// ============================================================
+// 力量-速度剖面（Force-Velocity Profile, Samozino's method）
+// 現況：F0(理論最大力)、V0(理論最大速度)、Pmax、SFv 的精確計算公式（inverse dynamics，
+// 需要體重、跳躍高度、推蹬距離三個變數的閉式方程式）我沒辦法從搜尋結果拿到完整、
+// 沒被截斷的版本可以照抄——與其冒著算錯公式、把假數字當真結果給你看的風險，
+// 這裡先只收集、只呈現原始資料（每次負重對應的跳躍高度），不算 F0/V0/Pmax。
+// 等我確認到可靠的公式來源，再回來加這段計算。
+// ============================================================
+function fvBuildProfile(vals){
+  const num = v => (v===null || v===undefined || v==='' || isNaN(Number(v))) ? null : Number(v);
+  const bodyMassKg = num(vals.bodyMassKg);
+  const pushOffCm = num(vals.pushOffCm);
+  const flags = [];
+  let date = todayISO();
+  if(vals.date){ const dp = parseInputDate(vals.date); if(dp.ok) date = dp.iso; }
+  if(bodyMassKg===null) flags.push('沒有填體重，之後要算F0/V0時會需要');
+  if(pushOffCm===null) flags.push('沒有填推蹬距離(Hpo)，之後要算F0/V0時會需要');
+  return {
+    id: 'FV_'+date+'_'+Math.random().toString(36).slice(2,8),
+    date, device: vals.device||'My Jump 2',
+    bodyMassKg, pushOffCm, trials: [], flags
+  };
+}
+function fvScatter(trials){
+  if(trials.length<2) return '';
+  const w=340, h=140, pad=24;
+  const loads = trials.map(t=>t.loadKg);
+  const heights = trials.map(t=>t.heightCm);
+  const lMin=Math.min(...loads), lMax=Math.max(...loads)||1;
+  const hMin=Math.min(...heights), hMax=Math.max(...heights)||1;
+  const lRange=(lMax-lMin)||1, hRange=(hMax-hMin)||1;
+  const pts = trials.map(t=>{
+    const x = pad + ((t.loadKg-lMin)/lRange)*(w-pad*2);
+    const y = h-pad - ((t.heightCm-hMin)/hRange)*(h-pad*2);
+    return {x,y,t};
+  });
+  return `<div class="plot"><svg viewBox="0 0 ${w} ${h}" height="${h}" aria-hidden="true">
+    <line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="var(--line2)" stroke-width="1"/>
+    <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h-pad}" stroke="var(--line2)" stroke-width="1"/>
+    ${pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="var(--mark)"/>`).join('')}
+    <text x="${pad}" y="${h-8}" font-size="9" fill="var(--faint)">${lMin}kg</text>
+    <text x="${w-pad}" y="${h-8}" font-size="9" fill="var(--faint)" text-anchor="end">${lMax}kg</text>
+    <text x="${pad+4}" y="${h-4}" font-size="9" fill="var(--faint)">負重(kg)→</text>
+    <text x="4" y="${h-pad}" font-size="9" fill="var(--faint)">${hMin}cm</text>
+    <text x="4" y="${pad+8}" font-size="9" fill="var(--faint)">${hMax}cm</text>
+  </svg></div>`;
+}
+
 
 function jumpTestSummary(){
   const tests = Array.isArray(DB.jumpTests) ? [...DB.jumpTests].sort((a,b)=> a.date<b.date?-1:1) : [];
@@ -654,7 +826,7 @@ function jumpTestSummary(){
 }
 const HOME_MAIN = ["Bulgarian Split Squat","DB Floor Press","DB Deadlift","DB Shoulder Press"];
 
-let DB = {sessions:[], notes:[], bodyweight:[], jumpTests:[], motionTests:[], settings:{theme:"light", mode:"gym"}};
+let DB = {sessions:[], notes:[], bodyweight:[], bodyComp:[], jumpTests:[], motionTests:[], jumpMeasurements:[], fvProfiles:[], settings:{theme:"light", mode:"gym"}};
 
 // 若不是在 Claude 對話框裡開啟（例如加到 iPhone 主畫面獨立執行），
 // window.storage 不存在，改用瀏覽器內建的 localStorage 當備援，行為對 App 其餘部分完全透明。
@@ -674,7 +846,7 @@ let state = {screen:"home", currentDay:null, currentSession:null, exIndex:0, tim
    weight / reps / rir / date / note / bodyweight。這條規則由
    「資料指紋」在程式層強制，不是靠自律。
    ============================================================ */
-const CURRENT_SCHEMA = 5;
+const CURRENT_SCHEMA = 8;
 
 /* 舊資料種子（SEED）。
    用途：把手機上舊版的資料直接烘進這個檔案，開啟就有，不用手動貼上匯入。
@@ -708,9 +880,13 @@ function dbFingerprint(db){
     volume: Math.round(volume*1000)/1000,
     bwCount: Array.isArray(db.bodyweight) ? db.bodyweight.length : 0,
     bwSum: Array.isArray(db.bodyweight) ? Math.round(db.bodyweight.reduce((a,b)=>a+(Number(b.weight)||0),0)*1000)/1000 : 0,
+    bcCount: Array.isArray(db.bodyComp) ? db.bodyComp.length : 0,
+    bcSum: Array.isArray(db.bodyComp) ? Math.round(db.bodyComp.reduce((a,b)=>a+(Number(b.bodyFat)||0),0)*1000)/1000 : 0,
     noteCount: Array.isArray(db.notes) ? db.notes.length : 0,
     jumpTestCount: Array.isArray(db.jumpTests) ? db.jumpTests.length : 0,
     motionTestCount: Array.isArray(db.motionTests) ? db.motionTests.length : 0,
+    jumpMeasCount: Array.isArray(db.jumpMeasurements) ? db.jumpMeasurements.length : 0,
+    fvProfileCount: Array.isArray(db.fvProfiles) ? db.fvProfiles.length : 0,
     jumpTestSum: Array.isArray(db.jumpTests) ? Math.round(db.jumpTests.reduce((a,j)=>a+(Number(j.standing)||0)+(Number(j.approach)||0),0)*1000)/1000 : 0,
     firstDate: dates[0]||null,
     lastDate: dates[dates.length-1]||null
@@ -795,6 +971,43 @@ const MIGRATIONS = [
     up: db => {
       if(!Array.isArray(db.motionTests)) db.motionTests = [];
       db.schemaVersion = 5;
+    }
+  },
+  {
+    // v6：一個獨立的新集合——身體組成紀錄（體脂率，選填腰圍）。跟體重（bodyweight）
+    // 分開存，因為量測方式跟誤差特性完全不同（體重是硬數字，體脂率不管哪種家用方式
+    // 誤差都可能到 ±3–5%），混在一起會讓人誤以為兩者一樣精準。純附加集合，
+    // 不影響任何既有資料。
+    from:5, to:6, name:'add-body-comp', mutatesValues:false,
+    guard: db => db.schemaVersion===undefined || db.schemaVersion<6,
+    up: db => {
+      if(!Array.isArray(db.bodyComp)) db.bodyComp = [];
+      db.schemaVersion = 6;
+    }
+  },
+  {
+    // v7：垂直跳測試資料源改成 My Jump 2（攝影機/飛行時間法），取代手機加速度計。
+    // 兩者誤差量級差了30-50倍（加速度計法16-18cm vs 攝影機法零點幾cm），不是同一種
+    // 精準度的資料，所以開新集合，不跟舊的 motionTests 混在一起。RAW / DERIVED 分開存，
+    // RAW 是使用者從 My Jump 2 匯入或手動輸入的原始值，DERIVED 是 App 自己算出來的
+    // （例如用飛行時間反推高度），兩者不互相覆蓋。
+    from:6, to:7, name:'add-jump-measurements', mutatesValues:false,
+    guard: db => db.schemaVersion===undefined || db.schemaVersion<7,
+    up: db => {
+      if(!Array.isArray(db.jumpMeasurements)) db.jumpMeasurements = [];
+      db.schemaVersion = 7;
+    }
+  },
+  {
+    // v8：力量-速度剖面(Force-Velocity Profile, Samozino's method)的原始資料收集。
+    // 只存RAW（每次負重+跳躍高度、體重、推蹬距離），不算F0/V0/Pmax——那個計算公式
+    // 需要inverse dynamics的精確版本，我從搜尋結果拿到的都是被截斷的方程式片段，
+    // 沒辦法保證抄對，寧可先不算，也不要把驗證不確定的公式塞進去假裝是對的。
+    from:7, to:8, name:'add-fv-profiles', mutatesValues:false,
+    guard: db => db.schemaVersion===undefined || db.schemaVersion<8,
+    up: db => {
+      if(!Array.isArray(db.fvProfiles)) db.fvProfiles = [];
+      db.schemaVersion = 8;
     }
   }
 ];
@@ -923,7 +1136,15 @@ function applyMode(){ PROGRAM = DB.settings.mode==='home' ? PROGRAM_HOME : PROGR
 
 function progFor(mode){ return mode==='home' ? PROGRAM_HOME : PROGRAM_GYM; }
 function safeDay(mode,day){ const p=progFor(mode); return p[day] || PROGRAM_GYM[day]; }
-function fmtDate(d){ const dt=new Date(d); return (dt.getMonth()+1)+"/"+dt.getDate(); }
+function fmtDate(d){
+  // A1修正：不能用 new Date("YYYY-MM-DD")，那是 UTC 零點，時區非UTC+0時顯示會差一天。
+  // 一律拆本地年月日字串本身，跟 localISO 對稱，不經過 Date 物件的時區轉換。
+  if(typeof d !== 'string') return '';
+  const parts = d.split('-');
+  if(parts.length<3) return d;
+  const m = Number(parts[1]), day = Number(parts[2]);
+  return m+"/"+day;
+}
 function escapeHtml(str){
   if(str===null || str===undefined) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -960,16 +1181,73 @@ function recentPerformances(exName, n){
 
 // 連續卡關判斷：最近兩次紀錄的重量相同，而且兩次都沒有做到次數上限。
 // 只看「同一個重量」是刻意的——如果中間有降重量再重新推，那是正常的自我調節，不算卡關。
+// PHASE 2／PHASE 1：reps 欄位有三種格式混用——單一數字("5")、範圍("10–12")、單邊註記("12/邊")。
+// parseInt() 對範圍字串只會抓到下限（parseInt("10–12")===10），這是個真的 bug：居家模式
+// 判斷「這個變化式練到頂了、該換下一個難度」時，會拿下限10當作「頂」，導致使用者做到
+// 10下（範圍下限）就被誤判成已經練滿，其實課表要的是做滿範圍上限12下才該換。
+// 這裡明確拆出 repMin/repMax，「練到頂了沒」永遠用 repMax 判斷，不是 parseInt 抓到什麼算什麼。
+function parseRepTarget(repsStr){
+  const s = String(repsStr).replace(/\/邊/g,'').trim();
+  const m = s.match(/(\d+)\s*[–—-]\s*(\d+)/); // 支援 en dash(–)／em dash(—)／一般連字號(-)
+  if(m) return {min:Number(m[1]), max:Number(m[2])};
+  const single = parseInt(s);
+  return isNaN(single) ? {min:null, max:null} : {min:single, max:single};
+}
+
 function detectPlateau(exDef){
   const recents = recentPerformances(exDef.n, 2);
   if(recents.length < 2) return null;
-  const targetReps = parseInt(exDef.reps);
+  const repTarget = parseRepTarget(exDef.reps);
+  const targetReps = repTarget.max;
   const weightOf = r => Math.max(...r.sets.map(s=>s.weight||0));
   const w0 = weightOf(recents[0]);
   const sameWeight = recents.every(r => weightOf(r)===w0);
   const bothMissed = recents.every(r => !(r.sets.length>=exDef.sets && r.sets.every(s=>s.reps>=targetReps)));
   return (sameWeight && bothMissed) ? {weight:w0} : null;
 }
+
+// PHASE 4：分類過的平台期診斷，不是單一boolean，也不自動觸發deload——只回傳型態＋證據清單＋
+// 資料品質說明，給人自己判斷。可能的型態：
+//   WEIGHT_PLATEAU — 重量沒變、次數也沒進步，真的卡住了
+//   REP_PLATEAU — 重量沒變，但次數其實在慢慢往上爬，只是還沒到範圍上限，不是真的卡關
+//   PROGRESSING — 沒有連續卡住的訊號
+//   INSUFFICIENT_DATA — 資料不夠判斷
+//   TECHNICAL_PROGRESS — 這個型態存在於分類定義裡，但這個App沒有動作品質/影片資料，
+//     沒辦法從現有資料判斷技術是否進步，永遠不會被這個函式輸出，只能靠STUCK_CHECKLIST
+//     裡「拍影片跟以前比」這條讓使用者自己判斷。列在這裡是為了誠實說明「這類不做」，
+//     不是假裝App能自動判斷技術進步。
+function diagnosePlateauType(exDef){
+  const recents = recentPerformances(exDef.n, 3);
+  if(recents.length < 2) return {type:'INSUFFICIENT_DATA', evidence:[], dataQuality:'少於2次可比較的紀錄'};
+
+  const repTarget = parseRepTarget(exDef.reps);
+  const targetReps = repTarget.max;
+  const weightOf = r => Math.max(...r.sets.map(s=>s.weight||0));
+  const repsOf = r => Math.max(...r.sets.map(s=>s.reps||0));
+
+  const last2 = recents.slice(0,2); // recents[0]是最新，[1]是次新
+  const w0 = weightOf(last2[0]);
+  const sameWeight = last2.every(r=>weightOf(r)===w0);
+  const bothMissedTop = last2.every(r => !(r.sets.length>=exDef.sets && r.sets.every(s=>s.reps>=targetReps)));
+
+  if(!(sameWeight && bothMissedTop)){
+    return {type:'PROGRESSING', evidence:['最近沒有連續卡住的訊號'], dataQuality:last2.length+'次紀錄可查'};
+  }
+
+  const evidence = ['連續2次重量沒變（'+w0+'kg）', '連續2次沒做到次數上限（目標'+targetReps+'下）'];
+
+  if(recents.length>=3){
+    const oldest = recents[recents.length-1], newest = recents[0];
+    if(repsOf(newest) > repsOf(oldest)){
+      evidence.push('次數其實在慢慢進步（'+repsOf(oldest)+'→'+repsOf(newest)+'下），只是還沒到範圍上限');
+      return {type:'REP_PLATEAU', evidence, weight:w0, dataQuality:recents.length+'次紀錄可查',
+        note:'次數在進步，不是真的卡關，繼續同重量練，不用照卡關檢查清單處理'};
+    }
+  }
+  return {type:'WEIGHT_PLATEAU', evidence, weight:w0, dataQuality:last2.length+'次紀錄可查',
+    note:'照PDF的卡關檢查順序排查，不是單純沒睡飽的雜訊'};
+}
+
 
 function lastPerformance(exName, excludeSessionId){
   for(let i=DB.sessions.length-1;i>=0;i--){
@@ -987,26 +1265,41 @@ function lastPerformance(exName, excludeSessionId){
 function suggestNextLoad(exDef){
   const last = lastPerformance(exDef.n);
   if(!last || !exDef.main) return null;
-  const targetReps = parseInt(exDef.reps);
+  const repTarget = parseRepTarget(exDef.reps);
+  const targetReps = repTarget.max; // 練到頂了沒，永遠看範圍上限，不是parseInt抓到的下限
   const targetRir = parseInt(exDef.rir);          // "1–2" 取下限 1：實際 RIR 至少要有這麼多才算「符合規定」
   const hasRirTarget = !isNaN(targetRir);
   const doneSets = last.sets;
   const allHitTop = doneSets.length>=exDef.sets && doneSets.every(s=>s.reps>=targetReps);
 
   if(exDef.home){
-    if(allHitTop) return {suggest:true, mode:'home', reason:"上次全數達標次數上限 → 該換下一個難度技巧了", note:exDef.diffNote};
-    return {suggest:false};
+    if(allHitTop) return {suggest:true, mode:'home', reason:"上次全數達標次數上限（"+targetReps+"下）→ 該換下一個難度技巧了", note:exDef.diffNote, confidenceTier:'HIGH'};
+    return {suggest:false, confidenceTier:'LOW'};
   }
   if(!allHitTop){
     // Tier 3：連續兩次在同一個重量都沒做到次數上限 → 這不再是「這次沒達標」的雜訊，
     // 是 PDF「卡關了怎麼辦」定義的訊號。串連既有的九步驟檢查清單，不發明新的判斷標準。
     const plateau = detectPlateau(exDef);
-    if(plateau) return {suggest:false, plateau:true, weight:plateau.weight,
-      reason:"這個重量已經連續 2 次沒做到次數上限 → 照 PDF 的卡關檢查順序排查，不是單純沒睡飽的雜訊"};
-    return {suggest:false};
+    if(plateau){
+      // PHASE 4：用分類過的診斷結果豐富文字說明，但不改變原本 .plateau:true/false 的外部
+      // 合約——REP_PLATEAU（次數其實在進步，只是還沒到範圍上限）不該用跟WEIGHT_PLATEAU
+      // 一樣的「照卡關清單排查」語氣去嚇使用者，這是兩種不同情況。
+      const diag = diagnosePlateauType(exDef);
+      const reason = diag.type==='REP_PLATEAU'
+        ? "重量沒變，但次數其實在慢慢進步（還沒到範圍上限）→ 這不是真的卡關，繼續同重量練就好"
+        : "這個重量已經連續 2 次沒做到次數上限 → 照 PDF 的卡關檢查順序排查，不是單純沒睡飽的雜訊";
+      return {suggest:false, plateau:true, weight:plateau.weight, plateauType:diag.type,
+        reason, confidenceTier:'MEDIUM'};
+    }
+    return {suggest:false, confidenceTier:'LOW'};
   }
 
   const w = Math.max(...doneSets.map(s=>s.weight||0));
+  // PHASE 2：micro-loading——如果這個動作有 microInc（比表定 inc 更小的最小可加重量，
+  // 例如啞鈴只能一次跳2.5kg但槓片可以跳1.25kg），優先用 microInc；沒設定就用表定 inc，
+  // 行為完全不變。器材限制目前唯一已知的表現方式是「換成替代動作」（GYM_SUBSTITUTE），
+  // 不是重量增量的問題，所以這裡不重複處理器材限制，那已經在別的路徑做了。
+  const increment = (exDef.microInc!==undefined && exDef.microInc!==null) ? exDef.microInc : exDef.inc;
   const rirVals = doneSets.filter(s=>s.rir!==null && s.rir!==undefined && s.rir!=='').map(s=>Number(s.rir)).filter(v=>!isNaN(v));
   const rirComplete = hasRirTarget && rirVals.length===doneSets.length;
 
@@ -1015,21 +1308,25 @@ function suggestNextLoad(exDef){
     if(minRir < targetRir){
       // 次數雖然達標，但至少有一組的 RIR 低於規定——代表這組是硬做出來的，不是「還有餘裕」達標。
       // PDF 的規則要求兩個條件同時成立，這裡沒有同時成立，所以不建議加重。
+      // PHASE 2保護規則：絕不因此調降 targetRir 這個標準本身去讓它看起來「達標」，
+      // 只會維持重量或走保護性判斷，標準永遠不變。
       return {suggest:false, mode:'gym', reason:"次數達標，但有一組 RIR 低於規定（做得比預期喘）→ 建議維持這次重量，下次再挑戰加重",
-              hold:true, minRir, targetRir};
+              hold:true, minRir, targetRir, confidenceTier:'MEDIUM'};
     }
     if(minRir >= targetRir + 2){
-      // 每一組都比規定的 RIR 寬鬆很多——加重的把握比一般情況更足，但公斤數還是用 PDF 表訂的 inc，不加碼。
-      return {suggest:true, mode:'gym', newWeight:(w+exDef.inc), confidence:'high',
+      // 每一組都比規定的 RIR 寬鬆很多——加重的把握比一般情況更足，但公斤數還是用課表設定的增量，不加碼。
+      return {suggest:true, mode:'gym', newWeight:(w+increment), confidence:'high', confidenceTier:'HIGH',
               reason:"上次每組 RIR 都比規定寬鬆（"+minRir+" ≥ "+targetRir+"+2）→ 加重的把握很足"};
     }
-    return {suggest:true, mode:'gym', newWeight:(w+exDef.inc), confidence:'normal',
+    return {suggest:true, mode:'gym', newWeight:(w+increment), confidence:'normal', confidenceTier:'HIGH',
             reason:"上次全數達標次數上限、RIR 也符合規定 → 建議加重"};
   }
 
-  // 這次紀錄沒有留 RIR 資料（例如舊資料或使用者沒填），退回只看次數的原始規則，但誠實標示信心較低
-  return {suggest:true, mode:'gym', newWeight:(w+exDef.inc), confidence:'low',
-          reason:"上次全數達標次數上限（這幾組沒有 RIR 紀錄，無法確認是否符合規定）→ 建議加重，可自行斟酌"};
+  // 這次紀錄沒有留 RIR 資料（例如舊資料或使用者沒填），退回只看次數的原始規則，但誠實標示信心較低——
+  // 三級規則下，這屬於 MEDIUM（不是 LOW／No Data，畢竟重量次數資料本身是完整的，只是少了RIR這一半
+  // 驗證條件），所以還是給出建議重量，但明確要求使用者自行確認。
+  return {suggest:true, mode:'gym', newWeight:(w+increment), confidence:'low', confidenceTier:'MEDIUM',
+          reason:"上次全數達標次數上限（這幾組沒有 RIR 紀錄，無法確認是否符合規定）→ 建議加重，需要你自行確認要不要挑戰"};
 }
 
 function render(){
@@ -1040,7 +1337,10 @@ function render(){
   if(navbar) navbar.classList.toggle('dim', state.screen==='exercise');
   if(state.screen==='home') app.innerHTML = renderHome();
   else if(state.screen==='workout') app.innerHTML = renderWorkoutPicker();
+  else if(state.screen==='preview') app.innerHTML = renderPreview();
   else if(state.screen==='today') app.innerHTML = renderToday();
+  else if(state.screen==='jumpImport') app.innerHTML = renderJumpImport();
+  else if(state.screen==='fvProfile') app.innerHTML = renderFvProfile();
   else if(state.screen==='exercise') app.innerHTML = renderExercise();
   else if(state.screen==='complete') app.innerHTML = renderComplete();
   else if(state.screen==='history') app.innerHTML = renderHistory();
@@ -1048,8 +1348,42 @@ function render(){
   else if(state.screen==='progress') app.innerHTML = renderProgress();
   else if(state.screen==='more') app.innerHTML = renderMore();
   else if(state.screen==='reference') app.innerHTML = renderReference();
-  else if(state.screen==='motionTest') app.innerHTML = renderMotionTest();
   bindEvents();
+}
+
+// C1：Home 摸高卡片——沒測過寫「還沒測摸高」不是0；≥14天沒測寫「該測了」；
+// 可以直接在Home記一次（原地+助跑），跟設定頁共用同一個 logJumpTest action跟資料，不是兩套邏輯。
+function homeJumpTestSection(){
+  const s = jumpTestSummary();
+  let daysSince = null;
+  if(s){
+    const [ly,lm,ld] = s.latest.date.split('-').map(Number);
+    const latestDate = new Date(ly,lm-1,ld);
+    const [ty,tm,td] = todayISO().split('-').map(Number);
+    const today = new Date(ty,tm-1,td);
+    daysSince = Math.round((today-latestDate)/86400000);
+  }
+  const stale = daysSince!==null && daysSince>=14;
+  return `
+    <div style="padding:18px 0; border-bottom:1px solid var(--line2)">
+      <div style="display:flex; justify-content:space-between; align-items:baseline">
+        <div class="label">摸高差值</div>
+        ${s ? `<span class="muted" style="font-size:11.5px; color:${stale?'var(--danger)':'var(--faint)'}">${stale?'該測了・':''}距上次 ${daysSince} 天</span>` : ''}
+      </div>
+      ${s ? `
+      <div style="display:flex; align-items:baseline; gap:8px; margin-top:6px">
+        <span class="figure f-big" style="color:${s.latestGap>0?'var(--mark)':'var(--danger)'}">${s.latestGap>0?'+':''}${s.latestGap}</span>
+        <span class="muted" style="font-size:12.5px">cm・目標 +5cm</span>
+      </div>` : `
+      <div class="figure f-big" style="color:var(--faint); margin-top:6px">還沒測摸高</div>
+      <p class="muted" style="font-size:12px; margin-top:4px">PDF說這是整份計畫成不成功的關鍵指標，先測一次原地跳跟助跑跳</p>`}
+      <div style="display:flex; gap:9px; margin-top:12px">
+        <input type="number" inputmode="decimal" id="jtStanding" placeholder="原地跳 cm">
+        <input type="number" inputmode="decimal" id="jtApproach" placeholder="助跑跳 cm">
+      </div>
+      <div style="height:9px"></div>
+      <button class="btn btn-sm" data-action="logJumpTest" style="width:100%">記錄這次測試</button>
+    </div>`;
 }
 
 function renderHome(){
@@ -1095,6 +1429,9 @@ function renderHome(){
       <button class="btn btn-sm" data-action="goWorkout" style="width:100%">換一個 Day，或補登過去的訓練</button>
     </section>
 
+    ${safetyWarningsCard()}
+    ${homeJumpTestSection()}
+
     <h3>這週</h3>
     <div class="week">${days.map(d=>`<i class="${d.has?'on':''} ${d.today?'today':''}"></i>`).join('')}</div>
     <div class="week-lab">${['一','二','三','四','五','六','日'].map(x=>`<span>${x}</span>`).join('')}</div>
@@ -1128,7 +1465,7 @@ function renderHome(){
 
 function renderWorkoutPicker(){
   const row = (d,backfill)=>`
-    <div class="tl-item" data-action="${backfill?'startBackfill':'startDay'}" data-day="${d}">
+    <div class="tl-item" data-action="${backfill?'startBackfill':'previewDay'}" data-day="${d}">
       <div class="tl-date" style="color:var(--mark); font-size:13px">0${d}</div>
       <div class="tl-body">
         <div class="tl-name">${PROGRAM[d].name.split(' — ')[1]||PROGRAM[d].name}</div>
@@ -1138,11 +1475,42 @@ function renderWorkoutPicker(){
     </div>`;
   return `
     <div class="pad"><h1>選一個 Day</h1>
-    <p class="muted">${DB.settings.mode==='home'?'居家版':'健身房版'}課表</p></div>
+    <p class="muted">${DB.settings.mode==='home'?'居家版':'健身房版'}課表・點進去可以先看動作內容，不會直接開始</p></div>
     <div class="tl" style="padding-left:0">${[1,2,3,4,5].map(d=>row(d,false)).join('')}</div>
     <h3>補登過去的訓練</h3>
     <p class="muted" style="font-size:12.5px; margin-bottom:6px">事後補打的紀錄，不會跳出休息計時器，日期可以自己選</p>
     <div class="tl" style="padding-left:0">${[1,2,3,4,5].map(d=>row(d,true)).join('')}</div>
+  `;
+}
+
+function renderPreview(){
+  const day = state.previewDay;
+  const isHome = DB.settings.mode==='home';
+  const prog = PROGRAM[day];
+  const warmup = (isHome?WARMUP_HOME:WARMUP_GYM)[day];
+  return `
+    <div class="topbar"><div class="back" data-action="backWorkout">‹</div>
+      <div style="flex:1; min-width:0"><div class="label">查看內容・還沒開始</div>
+      <h1 style="font-size:22px; overflow-wrap:break-word">${prog.name}</h1></div></div>
+
+    ${warmup ? `
+    <div class="note" style="margin-top:14px">
+      <div class="label">熱身</div>
+      <p style="font-size:13.5px; line-height:1.6; margin:6px 0 0">${warmup}</p>
+    </div>` : ''}
+
+    <h3>動作內容</h3>
+    <div class="tl" style="padding-left:0">
+      ${prog.exercises.map(def=>`
+        <div style="padding:13px 0; border-bottom:1px solid var(--line2)">
+          <div style="font-weight:700; font-size:15px">${dn(def.n)}</div>
+          <div class="rung-meta" style="margin-top:3px">${def.sets}×${def.reps} · RIR ${def.rir}${enSub(def.n)?' · '+enSub(def.n):''}</div>
+          ${def.cue ? `<p class="muted" style="font-size:12.5px; margin-top:5px; line-height:1.5">${escapeHtml(def.cue)}</p>` : ''}
+        </div>`).join('')}
+    </div>
+
+    <div style="height:20px"></div>
+    <button class="btn btn-primary" data-action="startDay" data-day="${day}">開始這次訓練</button>
   `;
 }
 
@@ -1240,6 +1608,17 @@ function renderExercise(){
       <div><div class="label">休息</div><div class="figure f-mid">${def.rest>=60?(def.rest/60):def.rest}<span style="font-size:13px; color:var(--faint)"> ${def.rest>=60?'分':'秒'}</span></div></div>
     </div>
     ${def.cue ? `<p class="muted" style="font-size:13.5px; line-height:1.6; margin-top:10px">${escapeHtml(def.cue)}</p>` : ''}
+    <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(def.n+' exercise form tutorial')}" target="_blank" rel="noopener"
+       style="display:inline-flex; align-items:center; gap:5px; margin-top:10px; font-size:12.5px; color:var(--mark); text-decoration:none; font-weight:700">
+       ▶ 看動作示範影片
+    </a>
+
+    ${(!def.home && GYM_SUBSTITUTE[def.n] && doneCount===0 && findSubstituteDef(GYM_SUBSTITUTE[def.n].sub)) ? `
+    <div class="note" style="border-left-color:var(--faint)">
+      <div class="label">器材沒有或維修中？</div>
+      <div style="margin-top:5px; font-size:14px">可以換成 <b>${dn(GYM_SUBSTITUTE[def.n].sub)}</b>（${GYM_SUBSTITUTE[def.n].note}），照 PDF 的健身房→居家對照表，訓練效果對應</div>
+      <button class="btn btn-sm" data-action="swapExercise" style="margin-top:10px; width:100%">換成這個動作</button>
+    </div>` : ''}
 
     ${suggestion && suggestion.suggest ? `
     <div class="note">
@@ -1261,7 +1640,14 @@ function renderExercise(){
     <h3>上次 · ${fmtDate(last.date)}</h3>
     <div style="display:flex; gap:7px; flex-wrap:wrap">
       ${last.sets.map(s=>`<span class="tag tag-mid" style="font-size:10.5px; padding:6px 9px; font-family:var(--rounded); font-weight:700; letter-spacing:0; text-transform:none">${def.weighted?s.weight+'kg × ':''}${s.reps}${unit}</span>`).join('')}
-    </div>` : `<h3>上次</h3><p class="muted" style="font-size:13px">沒有紀錄，這次會成為基準。</p>`}
+    </div>` : (()=>{
+      // C2：沒歷史時，如果課表參考表有這個動作的起始重量，提示一下，不是完全空白；
+      // 只當參考顯示，不自動填進輸入框——避免解析字串重量時猜錯，直接改欄位風險更高。
+      const prog = progressionFor(def.n);
+      return `<h3>上次</h3>` + (prog
+        ? `<p class="muted" style="font-size:13px">沒有紀錄，這次會成為基準。課表建議起始重量：<b style="color:var(--text)">${prog.start}</b>（之後每次 ${prog.inc}）</p>`
+        : `<p class="muted" style="font-size:13px">沒有紀錄，這次會成為基準。</p>`);
+    })()}
 
     <h3>這次</h3>
     <div class="setstack">
@@ -1277,6 +1663,10 @@ function renderExercise(){
         }
         const wDefault = s.weight!==null ? s.weight : (smartDefault(ex,si,'weight') ?? (last && last.sets[si] ? last.sets[si].weight : (last && last.sets[0] ? last.sets[0].weight : '')));
         const rDefault = s.reps!==null ? s.reps : (smartDefault(ex,si,'reps') ?? (last && last.sets[si] ? last.sets[si].reps : (last && last.sets[0] ? last.sets[0].reps : '')));
+        // C2：RIR 也要跟重量／次數一樣預填上次同一組的數字，不是每次都空白重打。
+        const lastRirRaw = last && last.sets[si] && last.sets[si].rir!==null && last.sets[si].rir!==undefined && last.sets[si].rir!=='' ? last.sets[si].rir
+          : (last && last.sets[0] && last.sets[0].rir!==null && last.sets[0].rir!==undefined && last.sets[0].rir!=='' ? last.sets[0].rir : '');
+        const rirDefault = (s.rir!==null && s.rir!==undefined && s.rir!=='') ? s.rir : lastRirRaw;
         const cls = def.type==='time' ? 'fields time' : (def.weighted ? 'fields' : 'fields nw');
         return `
         <div class="slab ${isActive?'now':''}">
@@ -1302,7 +1692,7 @@ function renderExercise(){
             </div>
             ${def.type!=='time' ? `
             <div class="field"><span class="label">RIR</span>
-              <input type="number" inputmode="numeric" value="${s.rir!==null&&s.rir!==undefined&&s.rir!==''?s.rir:''}" data-setfield="rir" data-si="${si}" placeholder="–">
+              <input type="number" inputmode="numeric" value="${rirDefault}" data-setfield="rir" data-si="${si}" placeholder="–">
             </div>` : ''}
           </div>
           <div style="height:10px"></div>
@@ -1317,6 +1707,159 @@ function renderExercise(){
       <button class="btn btn-primary" data-action="prevOrNextExercise" data-dir="1" style="flex:1">${state.exIndex===sess.exercises.length-1?'回到課表':'下一個動作'}</button>
     </div>
   `;
+}
+
+// ============================================================
+// Readiness 偏差標記——僅供參考，不驅動任何自動決策
+// ============================================================
+// 範圍聲明：這不是規格書原本要的「Adaptive Readiness Engine」。真的查證過28天Z-score
+// 監控法的文獻後，每一篇都強調「顯著偏差應該觸發『對話』，不是『自動行動』」，而且同一批
+// 文獻也指出主觀自陳量表的效度常常比客觀指標更好——這代表這個機制的正確用法本來就是
+// 「標記給人看，人自己判斷」，不是拿來自動觸發訓練決策。所以這裡只做標記，不接進
+// suggestNextLoad() 或任何訓練建議邏輯。
+//
+// 1.5個標準差這個門檻不是我發明的，是團隊運動監控文獻裡常見的慣例閾值（用來決定「這個
+// 偏差值不值得注意」），拿來當一個合理的參考起點，不是針對 Kenny 個人資料驗證過的精確值。
+const READINESS_FIELDS = {
+  energy: {label:'精力', higherIsBetter:true},
+  soreness: {label:'痠痛', higherIsBetter:false},
+  sleepHours: {label:'睡眠', higherIsBetter:true}
+};
+const READINESS_SD_THRESHOLD = 1.5;
+const READINESS_MIN_SAMPLES = 5; // 樣本太少，平均值跟SD本身就不穩，不夠格當基準
+
+function computeReadinessBaseline(field, excludeSessionId){
+  const [ty,tm,td] = todayISO().split('-').map(Number);
+  const today = new Date(ty,tm-1,td);
+  const vals = DB.sessions
+    .filter(s=>s.id!==excludeSessionId && s.checkin && typeof s.checkin[field]==='number')
+    .filter(s=>{
+      const [sy,sm,sd] = s.date.split('-').map(Number);
+      const days = (today - new Date(sy,sm-1,sd))/86400000;
+      return days>=0 && days<=28;
+    })
+    .map(s=>s.checkin[field]);
+  if(vals.length < READINESS_MIN_SAMPLES) return {ok:false, n:vals.length};
+  const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+  const sd = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)*(b-mean),0)/(vals.length-1));
+  return {ok:true, n:vals.length, mean:Math.round(mean*10)/10, sd:Math.round(sd*100)/100};
+}
+
+// 回傳每個欄位的標記結果，資料不足一律回傳 INSUFFICIENT_DATA，不用今天單一數字硬湊基準。
+function readinessDeviationFlags(session){
+  return Object.keys(READINESS_FIELDS).map(field=>{
+    const meta = READINESS_FIELDS[field];
+    const todayVal = session.checkin ? session.checkin[field] : null;
+    if(todayVal===null || todayVal===undefined || todayVal===''){
+      return {field, label:meta.label, status:'NO_INPUT'};
+    }
+    const baseline = computeReadinessBaseline(field, session.id);
+    if(!baseline.ok){
+      return {field, label:meta.label, status:'INSUFFICIENT_DATA', n:baseline.n, todayVal};
+    }
+    if(baseline.sd===0){
+      return {field, label:meta.label, status:'NO_VARIANCE', mean:baseline.mean, todayVal};
+    }
+    const z = (todayVal - baseline.mean) / baseline.sd;
+    const worseDirection = meta.higherIsBetter ? z<0 : z>0;
+    const flagged = Math.abs(z) >= READINESS_SD_THRESHOLD && worseDirection;
+    return {field, label:meta.label, status: flagged?'FLAGGED':'NORMAL', z:Math.round(z*100)/100,
+      mean:baseline.mean, todayVal, n:baseline.n};
+  });
+}
+
+// ============================================================
+// Data Governance & Safety——純工程問題，不涉及生理假設
+// ============================================================
+// 明確區分 null（沒填）／undefined（欄位不存在）／NaN（打了非數字）／0（真的填了零，
+// 這是合法值，不是「沒資料」——RIR=0代表做到力竭，體脂0%不合理但體重0kg也不該被當「沒填」
+// 處理掉，要用範圍檢查抓，不是用「falsy就當沒填」這種寫法，那會把合法的0值誤判成缺值）。
+function sanitizeNumber(raw, opts){
+  opts = opts || {};
+  const {min, max, allowZero=true} = opts;
+  if(raw===null || raw===undefined || raw===''){
+    return {value:null, valid:true, reason:null}; // 沒填是合法狀態，不是錯誤
+  }
+  const n = Number(raw);
+  if(isNaN(n)) return {value:null, valid:false, reason:'不是數字'};
+  if(n===0 && !allowZero) return {value:null, valid:false, reason:'這個欄位不接受0'};
+  if(min!==undefined && n<min) return {value:null, valid:false, reason:'低於合理下限('+min+')'};
+  if(max!==undefined && n>max) return {value:null, valid:false, reason:'高於合理上限('+max+')'};
+  return {value:n, valid:true, reason:null};
+}
+
+// 引導式安全提醒——只描述觀察到的資料模式，不做醫療判斷、不用「你可能有OOO」這種語氣。
+// 只在真的有連續多筆資料支持時才顯示，單一次事件不觸發（避免對雜訊反應過度）。
+function generateSafetyWarnings(){
+  const warnings = [];
+
+  // 體重短時間內變化很大——只描述數字，建議去留意營養或恢復，不做因果診斷
+  const bw = [...DB.bodyweight].sort((a,b)=>a.date<b.date?-1:1);
+  if(bw.length>=2){
+    const latest = bw[bw.length-1];
+    const [ly,lm,ld] = latest.date.split('-').map(Number);
+    const latestDate = new Date(ly,lm-1,ld);
+    const recentPrior = [...bw].reverse().find(b=>{
+      if(b.date===latest.date) return false;
+      const [py,pm,pd] = b.date.split('-').map(Number);
+      const days = (latestDate - new Date(py,pm-1,pd))/86400000;
+      return days>=5 && days<=10;
+    });
+    if(recentPrior && recentPrior.weight>0){
+      const pctChange = (latest.weight - recentPrior.weight)/recentPrior.weight*100;
+      if(Math.abs(pctChange) >= 3){
+        warnings.push({
+          type:'bodyweight_change',
+          confidenceTier:'MEDIUM', // 兩個數字比較，需要人自己判斷是不是真的問題，不是HIGH直接下結論
+          evidence:[`${recentPrior.date} → ${latest.date}：${recentPrior.weight}kg → ${latest.weight}kg（${pctChange>0?'+':''}${Math.round(pctChange*10)/10}%）`],
+          dataQuality:'僅2筆體重紀錄比較，樣本很小',
+          message: `體重在約一週內變化了 ${pctChange>0?'+':''}${Math.round(pctChange*10)/10}%（${recentPrior.weight}→${latest.weight}kg）——這麼短時間的變化通常是水分或飲食波動，值得留意最近的睡眠與飲食，不用因為單一數字緊張`
+        });
+      }
+    }
+  }
+
+  // 連續多次訓練RIR都貼近0——描述模式，建議留意恢復，不宣稱是過度訓練
+  const recentSessions = DB.sessions.slice(-5);
+  if(recentSessions.length>=5){
+    const allRir = recentSessions.flatMap(s=>s.exercises.flatMap(e=>
+      e.sets.filter(x=>x.done && x.rir!==null && x.rir!==undefined && x.rir!=='').map(x=>Number(x.rir))));
+    if(allRir.length>=8){
+      const avgRir = allRir.reduce((a,b)=>a+b,0)/allRir.length;
+      if(avgRir <= 0.5){
+        warnings.push({
+          type:'sustained_low_rir',
+          confidenceTier:'MEDIUM',
+          evidence:[`最近5次訓練共${allRir.length}組有RIR紀錄，平均RIR ${Math.round(avgRir*10)/10}`],
+          dataQuality:`5次訓練、${allRir.length}組樣本`,
+          message: `最近5次訓練的組數普遍做到只剩0下保留——這樣的強度持續一段時間，值得留意睡眠和恢復是否跟得上，不代表一定有問題`
+        });
+      }
+    }
+  }
+  return warnings;
+}
+
+function safetyWarningsCard(){
+  const warnings = generateSafetyWarnings();
+  if(!warnings.length) return '';
+  return `<div class="note" style="margin:0 16px 14px">
+    <div class="label">留意一下</div>
+    ${warnings.map(w=>`<div style="margin-top:6px; font-size:13px; line-height:1.6">${w.message}</div>`).join('')}
+  </div>`;
+}
+
+function readinessNote(session){
+  const flags = readinessDeviationFlags(session);
+  const withData = flags.filter(f=>f.status==='FLAGGED'||f.status==='NORMAL');
+  if(!withData.length) return '';
+  const flagged = flags.filter(f=>f.status==='FLAGGED');
+  return `<div class="note" style="border-left-color:var(--faint); margin-top:10px">
+    <div class="label">跟你自己過去28天比（僅供參考，不是建議）</div>
+    ${flagged.length ? flagged.map(f=>`<div style="margin-top:5px; font-size:13px">${f.label}今天 ${f.todayVal}，比你近期平均（${f.mean}）明顯${READINESS_FIELDS[f.field].higherIsBetter?'低':'高'}，值得留意，不代表一定要做什麼</div>`).join('')
+      : `<div style="margin-top:5px; font-size:13px; color:var(--faint)">今天的數字都在你自己近期的正常範圍內</div>`}
+    <div class="muted" style="font-size:10.5px; margin-top:6px">基準來自你自己過去最多28天、至少${READINESS_MIN_SAMPLES}次紀錄，不是外部標準；這只是提示，不會拿去自動調整任何建議重量</div>
+  </div>`;
 }
 
 function renderComplete(){
@@ -1386,6 +1929,7 @@ function renderComplete(){
       <input type="number" inputmode="decimal" id="sleepHoursInput" placeholder="昨晚睡幾小時（選填）"
         value="${sess.checkin&&sess.checkin.sleepHours!==null?sess.checkin.sleepHours:''}" style="flex:1">
     </div>
+    ${readinessNote(sess)}
 
     <h3>訓練筆記（選填）</h3>
     <textarea id="sessionNote" placeholder="睡眠、精神、疼痛、技術問題...">${escapeHtml(sess.note||'')}</textarea>
@@ -1473,30 +2017,88 @@ function renderSessionDetail(){
   `;
 }
 
-function estOneRM(w,r){ if(!w||!r) return 0; return Math.round(w*(1+r/30)); }
+// B3：不要一開始就 Math.round 成整數——那會讓兩組實際不同的估算值被夾成同一個整數，
+// PR 比較跟趨勢線都會失真。改成保留一位小數，UI 顯示照樣是一位小數，不影響閱讀。
+function estOneRM(w,r){ if(!w||!r) return 0; return Math.round(w*(1+r/30)*10)/10; }
 
 function sparkline(points){
   if(points.length<2) return '';
-  const w=340, h=88, pad=6;
+  const w=340, h=88, pad=8;
   const min = Math.min(...points), max = Math.max(...points);
   const range = (max-min) || 1;
   const stepX = w/(points.length-1);
   const xy = points.map((v,i)=>[i*stepX, h - ((v-min)/range)*(h-pad*2) - pad]);
   const line = xy.map(c=>c[0].toFixed(1)+','+c[1].toFixed(1)).join(' ');
-  const area = `0,${h} `+line+` ${w},${h}`;
   const lastPt = xy[xy.length-1];
-  const id = 'g'+Math.random().toString(36).slice(2,7);
-  return `<div class="plot"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" height="${h}" aria-hidden="true">
-    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="var(--mark)" stop-opacity=".30"/>
-      <stop offset="100%" stop-color="var(--mark)" stop-opacity="0"/>
-    </linearGradient></defs>
-    <polygon points="${area}" fill="url(#${id})"/>
+  // B2：波動範圍相對絕對值很小時（例如體重70kg只變0.8kg），標一行「縱軸已放大」，
+  // 避免小波動被拉滿整個高度、看起來像劇烈變化。
+  const absLevel = Math.max(...points.map(Math.abs)) || 1;
+  const scaledUp = (range/absLevel) < 0.05;
+  // B2修正：拿掉 preserveAspectRatio="none"（會把圓點壓扁變橢圓），viewBox 改成正方比例安全的高度，
+  // 讓 SVG 用預設的等比縮放。面積填色透明度大幅降低，線才是主視覺，不是底下那片色塊。
+  return `<div class="plot"><svg viewBox="0 0 ${w} ${h}" height="${h}" aria-hidden="true">
     <polyline points="${line}" fill="none" stroke="var(--mark)" stroke-width="2.2"
       stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
     <circle cx="${lastPt[0].toFixed(1)}" cy="${lastPt[1].toFixed(1)}" r="3.2" fill="var(--mark)"/>
+  </svg></div>${scaledUp?'<div class="muted" style="font-size:10.5px">縱軸已放大以看清小幅波動，不是變化真的這麼劇烈</div>':''}`;
+}
+
+// A5/B2：原始值淡點 + 移動平均實線。前 window-1 個點不是完整的 window 次平均，
+// 不能跟後面的實線平均線混在一起看，所以只從第 window 個點開始畫平均實線，
+// 前面那幾個點只用原始值的淡點表示，不假裝已經有平均可看。
+// Y軸波動如果相對絕對值很小（例如35cm裡面只變1cm），额外標一行「縱軸已放大」，避免誤導成劇烈變化。
+function rollingSparkline(raw, window){
+  if(raw.length<2) return '';
+  const w=340, h=88, pad=8;
+  const smoothed = rollingAverage(raw, window);
+  const allVals = raw.concat(smoothed.slice(window-1));
+  const min = Math.min(...allVals), max = Math.max(...allVals);
+  const range = (max-min) || 1;
+  const stepX = w/(raw.length-1);
+  const rawXY = raw.map((v,i)=>[i*stepX, h - ((v-min)/range)*(h-pad*2) - pad]);
+  const smoothXY = smoothed.map((v,i)=>[i*stepX, h - ((v-min)/range)*(h-pad*2) - pad]);
+  const solidStart = window-1; // 只有這之後的點才是真的 window 次平均
+  const solidLine = smoothXY.slice(solidStart).map(c=>c[0].toFixed(1)+','+c[1].toFixed(1)).join(' ');
+  const lastPt = smoothXY[smoothXY.length-1];
+  // 相對波動幅度小於絕對值的 5% 時，視為「縱軸有放大」
+  const absLevel = Math.max(...raw.map(Math.abs)) || 1;
+  const scaledUp = (range/absLevel) < 0.05;
+  return `<div class="plot"><svg viewBox="0 0 ${w} ${h}" height="${h}" aria-hidden="true">
+    ${rawXY.map(c=>`<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="2.2" fill="var(--mark)" opacity=".28"/>`).join('')}
+    ${solidLine ? `<polyline points="${solidLine}" fill="none" stroke="var(--mark)" stroke-width="2.2"
+      stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="${lastPt[0].toFixed(1)}" cy="${lastPt[1].toFixed(1)}" r="3.2" fill="var(--mark)"/>` : ''}
+  </svg></div>${scaledUp?'<div class="muted" style="font-size:10.5px">縱軸已放大以看清小幅波動，不是變化真的這麼劇烈</div>':''}`;
+}
+
+// A4：兩條線按同一組週次對齊，缺資料的那週留空、不硬連過去，不同長度的線不並排。
+function alignedWeekSparkline(values){
+  const pts = values.map((v,i)=>({v,i})).filter(p=>p.v!==null);
+  if(pts.length<2) return '';
+  const w=340, h=88, pad=8;
+  const allV = pts.map(p=>p.v);
+  const min=Math.min(...allV), max=Math.max(...allV), range=(max-min)||1;
+  const stepX = w/(Math.max(values.length-1,1));
+  // 依「連續有值」切段，段跟段之間空一格不連線
+  const segments = [];
+  let cur = [];
+  values.forEach((v,i)=>{
+    if(v===null){ if(cur.length) segments.push(cur); cur=[]; return; }
+    cur.push([i*stepX, h-((v-min)/range)*(h-pad*2)-pad]);
+  });
+  if(cur.length) segments.push(cur);
+  const lastSeg = segments[segments.length-1];
+  const lastPt = lastSeg[lastSeg.length-1];
+  return `<div class="plot"><svg viewBox="0 0 ${w} ${h}" height="${h}" aria-hidden="true">
+    ${segments.map(seg=>{
+      if(seg.length===1) return `<circle cx="${seg[0][0].toFixed(1)}" cy="${seg[0][1].toFixed(1)}" r="2.6" fill="var(--mark)" opacity=".6"/>`;
+      const line = seg.map(c=>c[0].toFixed(1)+','+c[1].toFixed(1)).join(' ');
+      return `<polyline points="${line}" fill="none" stroke="var(--mark)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" opacity=".85"/>`;
+    }).join('')}
+    <circle cx="${lastPt[0].toFixed(1)}" cy="${lastPt[1].toFixed(1)}" r="3.2" fill="var(--mark)"/>
   </svg></div>`;
 }
+
 
 function exerciseProgressCard(name){
   const bySession = DB.sessions.map(s=>{
@@ -1518,7 +2120,7 @@ function exerciseProgressCard(name){
   const best1rm = Math.max(...bySession.map(b=>b.top1rm));
   const trend = bySession.map(b=>b.top1rm);
   const volTrend = bySession.map(b=>b.volume);
-  const diff = trend.length>1 ? trend[trend.length-1]-trend[0] : 0;
+  const diff = trend.length>1 ? Math.round((trend[trend.length-1]-trend[0])*10)/10 : 0;
   const open = state.openTrend===name;
   const recent = allSets.slice(-6).reverse();
   return `
@@ -1672,12 +2274,28 @@ function jumpTestCard(){
 function renderPhaseCard(){
   const info = programWeekInfo();
   const pct = info.week/12*100;
+  // PHASE 5：日曆週數（純時間，不會因為缺練暫停）跟「本階段有沒有實際跳躍紀錄」分開顯示。
+  // 老實說明一個限制：這裡沒辦法做成「達到完成條件才允許升級」——因為 Day1/Day3 的跳躍課表
+  // 本身只是文字說明，不是像重訓那樣有組數/完成勾選的可追蹤資料，App 沒有東西可以拿來判斷
+  // 「這個階段真的練完了沒」。這裡能誠實提供的只有「這個階段的日期範圍內，你有沒有留下跳躍
+  // 測量紀錄」這種弱訊號，不是嚴格的完成度判定，也沒有升級／不升級的按鈕可以擋——這個App
+  // 本來就沒有使用者手動「進到下一階段」的動作，週數本身就是單純日曆時間。
+  let blockProgressHtml = '';
+  if(info.startDate){
+    const [sy,sm,sd] = info.startDate.split('-').map(Number);
+    const start = new Date(sy,sm-1,sd);
+    const blockStartDate = new Date(start); blockStartDate.setDate(start.getDate()+(info.block.weeks[0]-1)*7);
+    const blockEndDate = new Date(start); blockEndDate.setDate(start.getDate()+info.block.weeks[1]*7-1);
+    const blockStartISO = localISO(blockStartDate), blockEndISO = localISO(blockEndDate);
+    const jumpsInBlock = DB.jumpMeasurements.filter(m=>!m.familiarization && m.status==='OK' && m.date>=blockStartISO && m.date<=blockEndISO).length;
+    blockProgressHtml = `<p class="muted" style="font-size:11px; margin-top:10px">本階段（第${info.block.weeks[0]}–${info.block.weeks[1]}週）跳躍測量紀錄：${jumpsInBlock}筆——這只是弱訊號，不是完成度判定，週數不會因此暫停或跳過</p>`;
+  }
   return `
     <div class="hero" style="padding-top:8px; padding-bottom:24px">
       <div class="hero-grid">
         <div class="meter"><div class="meter-fill" style="height:${pct}%"></div></div>
         <div>
-          <div class="label">12 週訓練週期・對應第 ${info.block.weeks[0]}–${info.block.weeks[1]} 週跳躍階段</div>
+          <div class="label">12 週訓練週期（日曆週）・對應第 ${info.block.weeks[0]}–${info.block.weeks[1]} 週跳躍階段</div>
           <div class="figure f-big" style="margin-top:6px">第 ${info.week}<span style="font-size:19px; color:var(--faint)"> / 12 週</span></div>
         </div>
       </div>
@@ -1686,41 +2304,238 @@ function renderPhaseCard(){
         <div><span class="label">Day 1 · 垂直跳</span><div style="font-size:14px; margin-top:4px; line-height:1.55">${info.block.day1}</div></div>
         <div><span class="label">Day 3 · 彈跳</span><div style="font-size:14px; margin-top:4px; line-height:1.55">${info.block.day3}</div></div>
       </div>
+      ${blockProgressHtml}
       ${!info.startDate ? `<p class="muted" style="font-size:12px; margin-top:14px">還沒有訓練紀錄，週數會從你第一次訓練那天開始算</p>` : ''}
     </div>`;
 }
 
+function bodyCompCard(){
+  if(DB.bodyweight.length<2 && DB.bodyComp.length<2) return '';
+  const bw = [...DB.bodyweight].sort((a,b)=>a.date<b.date?-1:1);
+  const bf = [...DB.bodyComp].sort((a,b)=>a.date<b.date?-1:1);
+  return `<div class="card" style="margin:0 0 14px">
+    <div class="label">身體組成趨勢</div>
+    ${bw.length>1?`<div style="margin-top:10px"><span class="muted" style="font-size:12px">體重</span>${sparkline(bw.map(b=>b.weight))}</div>`:''}
+    ${bf.length>1?`<div style="margin-top:10px"><span class="muted" style="font-size:12px">體脂率</span>${sparkline(bf.map(b=>b.bodyFat))}</div>`:''}
+    ${bf.length<2?`<p class="muted" style="font-size:11.5px; margin-top:8px">體脂率紀錄還不夠畫趨勢，去「設定」裡記錄</p>`:''}
+  </div>`;
+}
+// ===== 週訓練量趨勢（tonnage + 完成組數，各自獨立折線，不做雙軸）=====
+// 查證結果：雙Y軸圖表會扭曲讀者對兩條數列關係的判斷（多篇視覺化研究含控制實驗證實），
+// 所以噸數跟完成組數分開畫兩條線，不合併成一張雙軸圖。
+function weeklyVolumeCard(){
+  if(DB.sessions.length<2) return '';
+  const dates = DB.sessions.map(s=>s.date).sort();
+  const [y0,m0,d0] = dates[0].split('-').map(Number);
+  const start = new Date(y0,m0-1,d0);
+  const [ty,tm,td] = todayISO().split('-').map(Number);
+  const today = new Date(ty,tm-1,td);
+  const totalWeeks = Math.min(16, Math.max(1, Math.ceil((today-start)/86400000/7)+1));
+  const tonnage = Array.from({length:totalWeeks}, ()=>0);
+  const setCount = Array.from({length:totalWeeks}, ()=>0);
+  DB.sessions.forEach(s=>{
+    const [sy,sm,sd] = s.date.split('-').map(Number);
+    const wk = Math.floor((new Date(sy,sm-1,sd)-start)/86400000/7);
+    if(wk<0 || wk>=totalWeeks) return;
+    s.exercises.forEach(e=>{
+      e.sets.filter(x=>x.done).forEach(x=>{
+        setCount[wk]++;
+        if(x.weight!==null && x.reps!==null) tonnage[wk] += (Number(x.weight)||0)*(Number(x.reps)||0);
+      });
+    });
+  });
+  if(totalWeeks<3) return '';
+  return `
+    <div style="padding:18px 0; border-bottom:1px solid var(--line2)">
+      <div class="label" style="margin-bottom:6px">週訓練量趨勢・共 ${totalWeeks} 週</div>
+      <div class="muted" style="font-size:11.5px; margin-bottom:4px">總噸數（重量×次數加總）</div>
+      ${sparkline(tonnage)}
+      <div class="muted" style="font-size:11.5px; margin:10px 0 4px">完成組數</div>
+      ${sparkline(setCount)}
+      <p class="muted" style="font-size:11px; margin-top:8px; line-height:1.6">兩條線分開畫，不合併成雙軸圖——雙軸圖容易讓人誤判兩個數列的實際關係，這是有研究證實的，不是我的偏好。這裡純粹描述量的變化，不代表量增加就等於進步。</p>
+    </div>`;
+}
+
+// ===== 跳躍測試內穩定度（同一天同類型≥3筆才算，CV%）=====
+function jumpConsistencySessions(){
+  const valid = DB.jumpMeasurements.filter(m=>!m.familiarization && m.status==='OK');
+  const groups = {};
+  valid.forEach(m=>{
+    const key = m.date+'_'+m.type;
+    if(!groups[key]) groups[key] = [];
+    const d = jumpDisplayHeight(m);
+    if(d.value!==null) groups[key].push(d.value);
+  });
+  return Object.entries(groups)
+    .filter(([k,vals])=>vals.length>=3)
+    .map(([k,vals])=>{
+      const [date,type] = k.split('_');
+      const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+      // B7：用樣本標準差（除以 n-1），不是母體標準差——這幾跳是抽樣，不是母體全部，
+      // 除以 n 會系統性低估變異，CV% 看起來比實際更穩定。
+      const sd = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)*(b-mean),0)/(vals.length-1));
+      const cv = mean>0 ? Math.round(sd/mean*1000)/10 : null;
+      return {date, type, vals, mean:Math.round(mean*10)/10, cv};
+    })
+    .sort((a,b)=>a.date<b.date?1:-1);
+}
+function jumpConsistencyCard(){
+  const sessions = jumpConsistencySessions();
+  if(!sessions.length) return '';
+  const latest = sessions[0];
+  return `<div class="card" style="margin:0 0 14px">
+    <div class="label">跳躍測試內穩定度（CV%）</div>
+    <div class="muted" style="font-size:12px; margin-top:6px; line-height:1.6">
+      最近一次同天測${latest.vals.length}跳（${fmtDate(latest.date)}・${JUMP_TYPES[latest.type]||latest.type}）：
+      平均 ${latest.mean}cm，CV ${latest.cv!==null?latest.cv+'%':'—'}。
+      CV 越低代表這幾跳彼此越接近；同樣的平均值，CV 高代表某幾跳特別不穩，不是「今天狀態比較差」就能解釋，也可能是動作不一致。這只是「這次測得穩不穩」，不是訓練 KPI，不要拿來跟別人比較或當成訓練效果指標。
+    </div>
+    ${sessions.length>1?`<div class="muted" style="font-size:11px; margin-top:8px">近期同天多跳測驗的CV：${sessions.slice(0,6).map(s=>s.cv+'%').join('、')}</div>`:''}
+  </div>`;
+}
+
+// ===== PR 時間軸：只標「真的突破」的那幾個點，不是連續趨勢 =====
+function prTimelineEvents(){
+  const mains = DB.settings.mode==='home' ? HOME_MAIN : GYM_MAIN;
+  const events = [];
+  mains.forEach(name=>{
+    let best = -Infinity;
+    DB.sessions.filter(s=>s.date).sort((a,b)=>a.date<b.date?-1:1).forEach(s=>{
+      const ex = s.exercises.find(e=>e.def.n===name);
+      if(!ex) return;
+      const done = ex.sets.filter(x=>x.done && x.weight!==null && x.reps!==null);
+      if(!done.length) return;
+      const e1rm = Math.max(...done.map(x=>estOneRM(x.weight,x.reps)));
+      if(e1rm > best){ best = e1rm; events.push({name, date:s.date, e1rm:Math.round(e1rm*10)/10}); }
+    });
+  });
+  return events.sort((a,b)=>a.date<b.date?1:-1);
+}
+function prTimelineCard(){
+  const events = prTimelineEvents();
+  if(events.length<2) return '';
+  return `<div class="card" style="margin:0 0 14px">
+    <div class="label">個人紀錄時間軸（推估1RM每次真的突破的點）</div>
+    <div class="tl" style="padding-left:0; margin-top:8px">
+      ${events.slice(0,8).map(e=>`<div style="padding:9px 0; border-bottom:1px solid var(--line2); display:flex; justify-content:space-between">
+        <span>${fmtDate(e.date)} · ${dn(e.name)}</span><span style="font-weight:700; font-family:var(--rounded)">${e.e1rm} kg</span>
+      </div>`).join('')}
+    </div>
+    <p class="muted" style="font-size:11px; margin-top:8px">這張看的是「真的突破」的那幾個點，跟上面的連續趨勢線問的問題不一樣——這個回答「里程碑在哪」，趨勢線回答「整體方向」。</p>
+  </div>`;
+}
+
+// ===== 訓練量×跳躍表現（並排小圖，不做雙軸；資料不足就老實說不足）=====
+function trainingVsJumpCard(){
+  if(DB.sessions.length<2) return '';
+  const okCmj = DB.jumpMeasurements.filter(m=>m.type==='CMJ' && !m.familiarization && m.status==='OK');
+  if(okCmj.length<4) return `<div class="card" style="margin:0 0 14px">
+    <div class="label">訓練量 × 跳躍表現</div>
+    <p class="muted" style="font-size:12px; margin-top:6px">目前資料量還不夠看這個關聯——需要至少4次以上OK的跳躍測量，現在有 ${okCmj.length} 次。資料夠了會自動顯示。</p>
+  </div>`;
+
+  // A4修正：兩條線一定用同一組週次索引，不是各自算各自的長度再並排（那是版面謊言）。
+  // 用「訓練資料開始的那週」當共同起點，同一個週次索引同時對應噸數跟CMJ平均。
+  const allDates = DB.sessions.map(s=>s.date).concat(okCmj.map(m=>m.date)).sort();
+  const [y0,m0,d0] = allDates[0].split('-').map(Number);
+  const start = new Date(y0,m0-1,d0);
+  const [ty,tm,td] = todayISO().split('-').map(Number);
+  const today = new Date(ty,tm-1,td);
+  const totalWeeks = Math.min(16, Math.max(1, Math.ceil((today-start)/86400000/7)+1));
+  const weekOf = dateStr => {
+    const [y,m,d] = dateStr.split('-').map(Number);
+    return Math.floor((new Date(y,m-1,d)-start)/86400000/7);
+  };
+
+  const tonnage = Array.from({length:totalWeeks}, ()=>0);
+  DB.sessions.forEach(s=>{
+    const wk = weekOf(s.date);
+    if(wk<0 || wk>=totalWeeks) return;
+    s.exercises.forEach(e=>e.sets.filter(x=>x.done).forEach(x=>{
+      if(x.weight!==null && x.reps!==null) tonnage[wk] += (Number(x.weight)||0)*(Number(x.reps)||0);
+    }));
+  });
+
+  // 同一週有多筆CMJ就取平均；沒有測的週留 null，不要硬連過去
+  const cmjByWeek = Array.from({length:totalWeeks}, ()=>[]);
+  okCmj.forEach(m=>{
+    const wk = weekOf(m.date);
+    if(wk<0 || wk>=totalWeeks) return;
+    const v = jumpDisplayHeight(m).value;
+    if(v!==null) cmjByWeek[wk].push(v);
+  });
+  const cmjWeekly = cmjByWeek.map(arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length*10)/10 : null);
+
+  const weeksWithTraining = tonnage.filter(t=>t>0).length;
+  const weeksWithJump = cmjWeekly.filter(v=>v!==null).length;
+  if(weeksWithTraining<4 || weeksWithJump<4) return `<div class="card" style="margin:0 0 14px">
+    <div class="label">訓練量 × 跳躍表現</div>
+    <p class="muted" style="font-size:12px; margin-top:6px">對齊到同一組週次後，有訓練紀錄的週數（${weeksWithTraining}）或有跳躍測量的週數（${weeksWithJump}）還不到4週，暫時不顯示這張圖，資料夠了會自動出現。</p>
+  </div>`;
+
+  return `<div class="card" style="margin:0 0 14px">
+    <div class="label">訓練量 × 跳躍表現（同一組週次對齊）</div>
+    <div class="muted" style="font-size:11.5px; margin-bottom:4px">週訓練量（噸數）</div>
+    ${alignedWeekSparkline(tonnage.map(t=>t>0?t:null))}
+    <div class="muted" style="font-size:11.5px; margin:10px 0 4px">週CMJ平均（沒測的週留空，不連線）</div>
+    ${alignedWeekSparkline(cmjWeekly)}
+    <p class="muted" style="font-size:11px; margin-top:8px; line-height:1.6">
+      兩條線用同一組週次對齊，不是各自長度硬並排。沒測跳躍的週留空、不連過去。這只是放在一起看「同時期的樣子」，不是同一張圖、也不代表因果——訓練量變化不代表就是跳躍表現變化的原因，兩者可能各自受其他因素影響。看到同步變化只能說「值得注意」，不能直接下結論。
+    </p>
+  </div>`;
+}
+
 function renderProgress(){
-  const phaseHtml = renderPhaseCard() + jumpTestCard();
-  const insightsHtml = muscleVolumeCard() + mainLiftsSummaryCard() + consistencyCard();
+  // C3：標題先出現，不是九張圖之後才看到「趨勢」兩個字。
+  const titleHtml = `<div class="pad"><h1>趨勢</h1></div>`;
+
+  // 第一層（預設展開）——課表成不成：摸高優先於12週進度，CMJ趨勢殿後
+  const tier1 = jumpTestCard() + renderPhaseCard() + jumpTrendCard();
+
+  // 第二層（標題「訓練」，預設展開）
+  const tier2 = `<div class="pad" style="padding-top:6px; padding-bottom:0"><h3 style="margin:0">訓練</h3></div>`
+    + consistencyCard() + weeklyVolumeCard() + jumpConsistencyCard();
+
+  // 第三層（標題「力量與身體」，預設摺疊）——沿用既有 toggleTrend 的點擊展開模式，不做新框架
+  const tier3Open = !!state.tier3Open;
   const mainLifts = DB.settings.mode==='home' ? HOME_MAIN : GYM_MAIN;
   const allNames = new Set();
   DB.sessions.forEach(s=>s.exercises.forEach(e=>{ if(e.def.weighted && e.sets.some(x=>x.done)) allNames.add(e.def.n); }));
-  if(allNames.size===0) return `${phaseHtml}${insightsHtml}
-    <div class="pad"><h1>趨勢</h1></div>
-    <div class="empty"><div class="figure">—</div>
-    <p class="muted" style="margin-top:10px">趨勢需要至少兩次同一個動作的紀錄才畫得出來。</p></div>`;
   const others = [...allNames].filter(n=>!mainLifts.includes(n));
-  let html = mainLifts.map(exerciseProgressCard).join('');
+  let exerciseHtml = mainLifts.map(exerciseProgressCard).join('');
   if(others.length){
-    html += `<h3>其他有紀錄的動作</h3>`;
-    html += others.map(exerciseProgressCard).join('');
+    exerciseHtml += `<h3>其他有紀錄的動作</h3>` + others.map(exerciseProgressCard).join('');
   }
-  return `${phaseHtml}${insightsHtml}<div class="pad"><h1>趨勢</h1>
-    <p class="muted">${DB.settings.mode==='home'?'居家版':'健身房版'}主課題。曲線是推估 1RM，全部來自你實際記錄的組數。</p></div>${html}
-    <p class="muted" style="font-size:11px; line-height:1.6; padding:16px 0 8px">
-      推估 1RM 用 Epley 公式計算（重量 ×(1+次數/30)）——選這個公式是因為在你這份課表常見的 3–15 下訓練範圍內誤差可接受、不需要額外校正參數；次數越高（15下以上）誤差會變大。這是估算值，不是真的測出來的 1RM，僅供參考長期趨勢。
-    </p>`;
+  const tier3Body = allNames.size===0
+    ? `<div class="empty"><div class="figure">—</div>
+       <p class="muted" style="margin-top:10px">動作曲線需要至少兩次同一個動作的紀錄才畫得出來。</p></div>`
+    : `<div class="pad" style="padding-top:10px">
+        <p class="muted">${DB.settings.mode==='home'?'居家版':'健身房版'}主課題。曲線是推估 1RM，全部來自你實際記錄的組數。</p>
+      </div>${exerciseHtml}
+      <p class="muted" style="font-size:11px; line-height:1.6; padding:12px 16px 8px">
+        推估 1RM 用 Epley 公式計算（重量 ×(1+次數/30)）——選這個公式是因為在你這份課表常見的 3–15 下訓練範圍內誤差可接受、不需要額外校正參數；次數越高（15下以上）誤差會變大。這是估算值，不是真的測出來的 1RM，僅供參考長期趨勢。
+      </p>`;
+  const tier3 = `<div class="trend" data-action="toggleTier3" style="cursor:pointer">
+      <div class="trend-head"><div style="font-weight:700; font-size:15.5px">力量與身體</div>
+      <span class="muted" style="font-size:12px">${tier3Open?'收起 ▲':'展開 ▼'}</span></div>
+    </div>`
+    + (tier3Open ? mainLiftsSummaryCard() + prTimelineCard() + tier3Body + bodyCompCard() + muscleVolumeCard() + trainingVsJumpCard() : '');
+
+  return titleHtml + tier1 + tier2 + tier3;
 }
 
 const PROGRESSION_TABLE = [
-  {n:"背蹲舉 Back Squat", start:"120 kg × 4 × 5", inc:"+5 kg", note:"掉到3–4下不用管，慢慢推回5下再加；掉到2下以下代表加太多，退回上個重量改加一半"},
-  {n:"六角槓硬舉 Trap-bar DL", start:"115 kg × 4 × 5", inc:"+5 kg", note:"同上"},
-  {n:"臥推 Bench Press", start:"62.5 kg × 4 × 5", inc:"+2.5 kg", note:"同上"},
-  {n:"站姿肩推 OHP", start:"40 kg × 4 × 6", inc:"+2.5 kg", note:"同上"},
-  {n:"羅馬尼亞硬舉 RDL", start:"70 kg × 3 × 8", inc:"+5 kg", note:"同上"},
-  {n:"臀推 Hip Thrust", start:"80 kg × 3 × 10", inc:"+5 kg", note:"同上"}
+  {n:"背蹲舉 Back Squat", key:"Back Squat", start:"120 kg × 4 × 5", inc:"+5 kg", note:"掉到3–4下不用管，慢慢推回5下再加；掉到2下以下代表加太多，退回上個重量改加一半"},
+  {n:"六角槓硬舉 Trap-bar DL", key:"Trap-bar Deadlift", start:"115 kg × 4 × 5", inc:"+5 kg", note:"同上"},
+  {n:"臥推 Bench Press", key:"Bench Press", start:"62.5 kg × 4 × 5", inc:"+2.5 kg", note:"同上"},
+  {n:"站姿肩推 OHP", key:"Standing OHP", start:"40 kg × 4 × 6", inc:"+2.5 kg", note:"同上"},
+  {n:"羅馬尼亞硬舉 RDL", key:"RDL", start:"70 kg × 3 × 8", inc:"+5 kg", note:"同上"},
+  {n:"臀推 Hip Thrust", key:"Hip Thrust", start:"80 kg × 3 × 10", inc:"+5 kg", note:"同上"}
 ];
+// C2：用明確的 key 對照 def.n，不做字串模糊比對——PROGRESSION_TABLE 的顯示名跟內部
+// key 常常不是同一個縮寫（例如「Trap-bar DL」vs 內部key「Trap-bar Deadlift」），
+// 模糊比對容易比對錯動作、給錯起始重量，寧可查不到就不顯示。
+function progressionFor(name){ return PROGRESSION_TABLE.find(p=>p.key===name) || null; }
 const DELOAD_SIGNS = [
   "兩個以上動作同時退步","膝蓋、肩膀或下背一直有痠脹感",
   "摸高比最好的那次低 3cm 以上","睡不好或睡不著",
@@ -1729,23 +2544,45 @@ const DELOAD_SIGNS = [
 // 這6項訊號裡，只有「連續退步的動作數」跟「摸高退步幅度」是 App 能直接從資料算出來的，
 // 其餘4項是主觀感受，沒有對應的量化資料——刻意不自己發明門檻去猜，寧可誠實顯示
 // 「需要自行評估」，也不要編一個假的判斷去冒充有在幫你分析。
+// 多重證據收集——每一項獨立檢查，不合併成單一信心分數。合併成一個數字看起來更「智慧」，
+// 但那個合併權重（這項佔多少%）本身沒有文獻依據，寫出來就是假裝有科學根據的偽精確。
+// 使用者自己看這幾項證據、自己判斷比較誠實。
 function checkDeloadSigns(){
   const mains = DB.settings.mode==='home' ? HOME_MAIN : GYM_MAIN;
+  // PHASE 4：只算真的 WEIGHT_PLATEAU（卡住），不算 REP_PLATEAU（次數其實在進步，
+  // 只是還沒到範圍上限）——後者不該被當成「卡關證據」列進來，那會誤導判斷。
   const plateauCount = mains.filter(n=>{
     const def = Object.values(PROGRAM).flatMap(d=>d.exercises).find(e=>e.n===n && e.main);
-    return def && suggestNextLoad(def) && suggestNextLoad(def).plateau;
+    const s = def && suggestNextLoad(def);
+    return s && s.plateau && s.plateauType!=='REP_PLATEAU';
   }).length;
   const jt = jumpTestSummary();
   const jumpDropped = jt && (jt.bestGap - jt.latestGap >= 3);
+
+  // 睡眠／精力現在有真的資料可查（checkin），用跟自己過去28天比較的偏差標記，
+  // 不是拿外部標準硬套；資料不夠時誠實回傳不可查，不硬湊。
+  const lastSession = DB.sessions.length ? DB.sessions[DB.sessions.length-1] : null;
+  let sleepFlag = {status:'NO_INPUT'}, energyFlag = {status:'NO_INPUT'};
+  if(lastSession){
+    const flags = readinessDeviationFlags(lastSession);
+    sleepFlag = flags.find(f=>f.field==='sleepHours');
+    energyFlag = flags.find(f=>f.field==='energy');
+  }
+  const sleepCheckable = sleepFlag.status==='FLAGGED' || sleepFlag.status==='NORMAL';
+  const energyCheckable = energyFlag.status==='FLAGGED' || energyFlag.status==='NORMAL';
+
   return [
     {checkable:true, triggered: plateauCount>=2, detail: plateauCount>0 ? `目前 ${plateauCount} 個主力動作連續卡關` : null},
     {checkable:false},
     {checkable:true, triggered: !!jumpDropped, detail: jt ? `最新摸高 ${jt.latestGap>=0?'+':''}${jt.latestGap}cm，歷史最佳 ${jt.bestGap>=0?'+':''}${jt.bestGap}cm` : null},
-    {checkable:false},
-    {checkable:false},
+    {checkable:sleepCheckable, triggered: sleepCheckable && sleepFlag.status==='FLAGGED',
+      detail: sleepCheckable ? `最近一次紀錄睡眠 ${sleepFlag.todayVal}h，近28天平均 ${sleepFlag.mean}h` : null},
+    {checkable:energyCheckable, triggered: energyCheckable && energyFlag.status==='FLAGGED',
+      detail: energyCheckable ? `最近一次紀錄精力 ${energyFlag.todayVal}/5，近28天平均 ${energyFlag.mean}/5` : null},
     {checkable:false}
   ];
 }
+
 
 const STUCK_CHECKLIST = [
   {n:"睡眠",how:"最近有幾天沒睡到 7 小時？先修睡眠，其他都先不要動"},
@@ -1765,157 +2602,133 @@ const NUTRITION_TABLE = [
   {n:"碳水", v:"380–420 g", how:"不要怕碳水。跳躍和排球非常吃碳水，吃太少會直接跳不高"}
 ];
 
-// state.motion 存放這次測量的即時狀態：'idle' | 'requesting' | 'listening' | 'done' | 'error'
-// 診斷模式：把這次收集到的原始加速度數值攤開來看，不管這次測量成功或失敗都顯示。
-// 目的是回答一個問題：訊號本身雜訊就很大，還是偵測邏輯抓錯了時間點——這兩件事光看
-// 最終結果數字分不出來，一定要看原始曲線。
-function renderMotionDiagnostic(samples, result){
-  if(!samples || samples.length<2) return '';
-  const mags = samples.map(s=>s.mag);
-  const duration = samples[samples.length-1].t - samples[0].t;
-  const rateHz = duration>0 ? Math.round(samples.length/(duration/1000)) : 0;
-  const minMag = Math.min(...mags).toFixed(1), maxMag = Math.max(...mags).toFixed(1);
-  let events = '';
-  if(result && result.ok){
-    if(result.takeoffMs!==undefined && result.contactMs===undefined){
-      events = `<div class="muted" style="font-size:11.5px; margin-top:6px">偵測到起跳於 ${result.takeoffMs}ms・落地於 ${result.landMs}ms</div>`;
-    } else if(result.land1Ms!==undefined){
-      events = `<div class="muted" style="font-size:11.5px; margin-top:6px">第一次觸地 ${result.land1Ms}ms・起跳 ${result.takeoffMs}ms・最終落地 ${result.land2Ms}ms</div>`;
-    }
-  }
+
+function renderJumpImport(){
+  const preview = state.jumpImportPreview;
+  const list = [...DB.jumpMeasurements].sort((a,b)=>a.date<b.date?1:-1);
   return `
-    <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--line2)">
-      <div class="label">診斷資料・原始加速度合力</div>
-      <div class="readout" style="margin-top:8px">
-        <div><span class="label">取樣數</span><b style="font-size:16px">${samples.length}</b></div>
-        <div><span class="label">約略頻率</span><b style="font-size:16px">${rateHz}<span style="font-size:12px; color:var(--faint)">Hz</span></b></div>
-        <div><span class="label">最小/最大</span><b style="font-size:16px">${minMag}/${maxMag}</b></div>
-      </div>
-      ${sparkline(mags)}
-      <div class="muted" style="font-size:10.5px; margin-top:4px">靜止時應接近 9.8；自由落體時會掉到接近 0；落地衝擊時會有明顯尖峰</div>
-      ${events}
-    </div>`;
-}
+    <div class="topbar"><div class="back" data-action="backJumpImport">‹</div>
+      <div><div class="label">垂直跳測量</div><h1 style="font-size:22px">My Jump 2 資料</h1></div></div>
+    <p class="muted" style="font-size:12.5px; margin:0 0 14px">高度用飛行時間反推的公式跟 My Jump 2 官方算法一致（h=t²×1.22625），不是本 App 自己發明的算法</p>
 
-function renderMotionTest(){
-  const m = state.motion || {phase:'idle', mode:'cmj', batch:{trials:[], startedAt:null}};
-  const mode = m.mode || 'cmj';
-  const batch = m.batch || {trials:[], startedAt:null};
-
-  // done 畫面要即時預覽「如果現在存這批，會是什麼結果」，所以把目前這次也暫時併進去算
-  let previewTrials = batch.trials, previewSummary = null, highSpread = false;
-  if(m.phase==='done' && m.result){
-    const currentTrial = makeTrial(mode, m.result, 'VALID');
-    previewTrials = batch.trials.concat([currentTrial]);
-    previewSummary = summarizeTrials(previewTrials);
-    if(previewSummary && (previewSummary.maxHeightCm - previewSummary.minHeightCm) >= 5) highSpread = true;
-  }
-
-  return `
-    <div class="topbar"><div class="back" data-action="backMotionTest">‹</div>
-      <div style="flex:1; min-width:0"><div class="label">實驗性功能</div>
-      <h1 style="font-size:22px; overflow-wrap:break-word">動作感測跳躍測試</h1></div></div>
-
-    <div class="note">
-      <div class="label label-mark">準確度提醒</div>
-      <p style="font-size:13px; line-height:1.6; margin-top:6px">
-        用手機加速度計反推飛行時間，準確度比不上慢動作攝影或測力板，數字僅供參考長期趨勢，不是精密量測。
-        文獻上手持手機測跳躍高度、未經校正的誤差可達16–18cm（Mascia et al., 2023），比一般想像的更粗糙。
-        RSI 需要的觸地時間窗口只有0.15-0.3秒，比純跳躍高度測試更容易受雜訊影響，誤差會更大。
-        測量時<b>雙手交叉抱胸握緊手機</b>，不要用手臂擺盪，手臂動作會被誤判成身體的跳躍訊號。
-        同一天裡差幾公分很常見，不要把小於這批範圍的變化當成進步。
-      </p>
-    </div>
-
-    ${m.phase==='idle' ? `
-    <div style="display:flex; gap:8px; margin-top:16px">
-      <div class="check" data-action="setMotionMode" data-mode="cmj" style="flex:1; height:44px; ${mode==='cmj'?'background:var(--mark); border-color:var(--mark); color:var(--void)':''}">跳躍高度</div>
-      <div class="check" data-action="setMotionMode" data-mode="dropjump" style="flex:1; height:44px; ${mode==='dropjump'?'background:var(--mark); border-color:var(--mark); color:var(--void)':''}">落下跳 RSI</div>
-    </div>
-    <p class="muted" style="font-size:12px; margin-top:8px; line-height:1.6">
-      ${mode==='cmj' ? '原地垂直跳一次，手保持抱胸不動。' : '從矮箱/階梯踏下，落地立刻反彈垂直跳起，手保持抱胸不動。'}
-      建議連續測 3 次取平均，單次雜訊比較大。
-    </p>
-    <div style="height:12px"></div>
-    <button class="btn btn-primary" data-action="startMotionTest">開始測量</button>
-    <p class="muted" style="font-size:12px; margin-top:10px; text-align:center">按下後手機會請求動作感測權限，同意後盡快完成動作</p>
-    ` : ''}
-
-    ${m.phase==='requesting' ? `
-    <div class="empty"><div class="figure" style="font-size:32px">···</div>
-    <p class="muted" style="margin-top:10px">請求感測權限中</p></div>
-    ` : ''}
-
-    ${m.phase==='ready' ? `
-    <div class="empty"><div class="figure" style="font-size:56px; color:var(--mark)">${m.countdown}</div>
-    <p style="margin-top:10px; font-weight:700">先喬好手機位置</p>
-    <p class="muted" style="font-size:12px; margin-top:4px">倒數結束才開始收訊號</p></div>
-    ` : ''}
-
-    ${m.phase==='listening' ? `
-    <div class="empty"><div class="figure" style="font-size:32px; color:var(--mark)">●</div>
-    <p style="margin-top:10px; font-weight:700">偵測中・現在跳！</p>
-    <p class="muted" style="font-size:12px; margin-top:4px">3 秒後自動停止</p></div>
-    ` : ''}
-
-    ${m.phase==='done' ? `
-    <div style="text-align:center; padding-top:20px">
-      <div class="figure f-mega" style="color:var(--mark)">${m.result.heightCm}</div>
-      <div class="label" style="margin-top:4px">公分・估計跳躍高度</div>
-      <div class="readout" style="justify-content:center; margin-top:14px">
-        <div><span class="label">飛行時間</span><b>${m.result.flightMs}<span style="font-size:14px; color:var(--faint)">ms</span></b></div>
-        ${m.result.contactMs!==undefined ? `<div><span class="label">觸地時間</span><b>${m.result.contactMs}<span style="font-size:14px; color:var(--faint)">ms</span></b></div>` : ''}
-        ${m.result.rsi!==undefined ? (m.result.contactMs>RSI_MAX_VALID_CONTACT_MS ?
-          `<div><span class="label">RSI</span><b style="color:var(--danger); font-size:14px">無效</b></div>` :
-          `<div><span class="label">RSI</span><b>${m.result.rsi}</b></div>`) : ''}
-      </div>
-      ${(m.result.rsi!==undefined && m.result.contactMs>RSI_MAX_VALID_CONTACT_MS) ?
-        `<p class="muted" style="font-size:11.5px; margin-top:8px">觸地過長（${m.result.contactMs}ms），不像反應性落下跳，這次的 RSI 不採計，但高度仍可信</p>` : ''}
-    </div>
-    <div style="height:20px"></div>
-    <button class="btn btn-primary" data-action="addToMotionBatch">加入這批・再測一次</button>
-    <p class="muted" style="font-size:11px; margin-top:6px; text-align:center">休息約 30–60 秒再跳</p>
+    <h3>貼上 CSV／表格資料</h3>
+    <p class="muted" style="font-size:12px; margin-bottom:8px">從 My Jump 2 匯出成 Excel/Google Drive 後，複製整段貼過來（第一行要是欄位標題，例如 Date, Type, Jump Height, Flight Time）</p>
+    <textarea id="jumpCsvInput" placeholder="貼上 CSV 或表格內容&#10;第一行是標題列" style="min-height:100px; font-family:var(--mono); font-size:12px"></textarea>
     <div style="height:9px"></div>
-    <button class="btn btn-sm" data-action="saveMotionTest">只存這一次</button>
-    <div style="height:9px"></div>
-    <button class="btn btn-sm" data-action="discardMotionTrial" style="width:100%">重測（不採用這次）</button>
-    ${batch.trials.length>0 ? `
-    <div class="note" style="margin-top:16px">
-      <div class="label label-mark">這批目前 ${previewSummary?previewSummary.n:0} 次（含這次）</div>
-      <div class="muted" style="font-size:12px; margin-top:4px">
-        ${previewTrials.map(t=>`${t.heightCm}cm${t.flag!=='VALID'?'（'+t.flag+'）':''}`).join('、')}
-      </div>
-      ${highSpread ? `<p style="font-size:12px; color:var(--danger); margin-top:8px; line-height:1.5">這批散度很大，比較像測量不穩，不適合拿去判斷有沒有進步。</p>` : ''}
-    </div>` : ''}
-    ${(previewSummary && previewSummary.n>=2) ? `
-    <button class="btn btn-primary" data-action="saveMotionBatch" style="margin-top:10px">存這批 ${previewSummary.n} 次的平均值</button>` : ''}
-    ${renderMotionDiagnostic(m.samples, m.result)}
-    ` : ''}
+    <div style="display:flex; gap:9px; margin-bottom:9px">
+      <input type="text" id="jumpCsvDevice" placeholder="量測工具" value="My Jump 2" style="flex:1">
+    </div>
+    <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:9px">
+      <input type="checkbox" id="jumpCsvFamiliarization"> 這批算熟悉期，不算進基準／趨勢
+    </label>
+    <button class="btn btn-sm" data-action="parseJumpCsv" style="width:100%">解析</button>
 
-    ${m.phase==='error' ? `
-    <div class="empty"><div class="figure" style="font-size:32px; color:var(--danger)">—</div>
-    <p style="margin-top:10px; font-weight:700">${escapeHtml(m.message||'測量失敗')}</p></div>
-    <button class="btn btn-sm" data-action="startMotionTest" style="width:100%">再試一次</button>
-    ${batch.trials.length>0 ? `<p class="muted" style="font-size:11.5px; margin-top:10px; text-align:center">這批已收集的 ${batch.trials.length} 次還在，不會因為這次失敗被清掉</p>` : ''}
-    ${renderMotionDiagnostic(m.samples, null)}
-    ` : ''}
-
-    ${DB.motionTests.length ? `
-    <h3>歷史紀錄</h3>
-    <div class="util">
-      ${[...DB.motionTests].sort((a,b)=>a.date<b.date?1:-1).slice(0,8).map(t=>{
-        const isNew = t.n !== undefined;
-        const n = isNew ? t.n : 1;
-        const height = isNew ? t.meanHeightCm : t.heightCm;
-        const validRsi = t.type==='dropjump' ? entryValidRsi(t) : null;
-        const rsiLabel = t.type!=='dropjump' ? '' : (validRsi!==null ? ' · RSI '+validRsi : ' · RSI無效');
-        return `
-        <div class="util-row" style="padding:11px 0">
-          <span class="k">${fmtDate(t.date)}${n>1?` · ${n}次平均`:''}</span>
-          <span style="font-family:var(--rounded); font-weight:700">${height}cm${rsiLabel}${n>1?` <span class="muted" style="font-family:var(--sans); font-weight:400; font-size:11px">(${t.minHeightCm}–${t.maxHeightCm})</span>`:''}</span>
+    ${preview ? `
+    <h3>預覽（還沒存，確認沒問題再匯入）</h3>
+    <p class="muted" style="font-size:11.5px; margin-bottom:6px">OK ${preview.entries.filter(e=>e.status==='OK').length} 筆會進趨勢圖；需要檢查 ${preview.entries.filter(e=>e.status!=='OK').length} 筆可以存但不會進趨勢圖，只在歷史清單看得到</p>
+    <div class="tl" style="padding-left:0">
+      ${[...preview.entries].sort((a,b)=> (a.status==='OK'?0:1) - (b.status==='OK'?0:1)).map(e=>{
+        const d = jumpDisplayHeight(e);
+        return `<div style="padding:11px 0; border-bottom:1px solid var(--line2)">
+          <div style="display:flex; justify-content:space-between; align-items:baseline">
+            <span style="font-weight:700">${fmtDate(e.date)} · ${JUMP_TYPES[e.type]||e.type}</span>
+            <span class="tag ${e.status==='OK'?'tag-mark':'tag-mid'}">${e.status==='OK'?'OK':'需要檢查'}</span>
+          </div>
+          <div class="muted" style="font-size:13px; margin-top:3px">${d.value!==null?d.value+' cm（'+d.from+'）':'無法算出高度'}</div>
+          ${e.flags.length?`<div class="muted" style="font-size:11.5px; margin-top:3px; color:var(--mark)">${e.flags.join('；')}</div>`:''}
         </div>`;
       }).join('')}
-    </div>` : ''}
+    </div>
+    <div style="display:flex; gap:9px; margin-top:10px">
+      <button class="btn btn-sm" data-action="cancelJumpImport" style="flex:1">取消</button>
+      <button class="btn btn-sm btn-primary" data-action="confirmJumpImport" style="flex:1">確認匯入 ${preview.entries.length} 筆</button>
+    </div>
+    ` : ''}
+
+    <h3>手動輸入單筆</h3>
+    <p class="muted" style="font-size:12px; margin-bottom:8px">直接看 My Jump 2 畫面上的數字打進來，高度跟飛行時間至少填一個</p>
+    <div style="display:flex; gap:9px; margin-bottom:9px">
+      <select id="jmType" style="flex:1"><option value="CMJ">反向跳 CMJ</option><option value="SJ">蹲踞跳 SJ</option><option value="DJ">落地跳 DJ</option></select>
+      <input type="date" id="jmDate" value="${todayISO()}" style="flex:1">
+    </div>
+    <div style="display:flex; gap:9px; margin-bottom:9px">
+      <input type="number" inputmode="decimal" id="jmHeight" placeholder="跳躍高度 cm">
+      <input type="number" inputmode="decimal" id="jmFlight" placeholder="飛行時間 ms">
+    </div>
+    <div style="display:flex; gap:9px; margin-bottom:9px">
+      <input type="number" inputmode="decimal" id="jmContact" placeholder="觸地時間 ms（落地跳用）">
+      <input type="number" inputmode="decimal" id="jmRsi" placeholder="RSI（落地跳用）">
+    </div>
+    <div style="display:flex; gap:9px; margin-bottom:9px">
+      <input type="text" id="jmDevice" placeholder="量測工具" value="My Jump 2" style="flex:1">
+    </div>
+    <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:9px">
+      <input type="checkbox" id="jmFamiliarization"> 這筆算熟悉期，不算進基準／趨勢
+    </label>
+    <button class="btn btn-sm" data-action="saveManualJump" style="width:100%">記錄這一筆</button>
+
+    <h3>歷史紀錄</h3>
+    ${list.length ? `<div class="tl" style="padding-left:0">
+      ${list.slice(0,20).map(e=>{
+        const d = jumpDisplayHeight(e);
+        return `<div style="padding:11px 0; border-bottom:1px solid var(--line2)">
+          <div style="display:flex; justify-content:space-between; align-items:baseline">
+            <span style="font-weight:700">${fmtDate(e.date)} · ${JUMP_TYPES[e.type]||e.type}</span>
+            <span class="figure" style="font-size:16px">${d.value!==null?d.value+' cm':'—'}</span>
+          </div>
+          <div class="muted" style="font-size:11px; margin-top:2px">${e.source==='myjump2_import'?'My Jump 2 匯入':'手動輸入'} · ${e.device||'My Jump 2'}${d.from?' · '+d.from:''}${e.status==='NEEDS_REVIEW'?' · 需要檢查':''}${e.familiarization?' · 熟悉期':''}</div>
+        </div>`;
+      }).join('')}
+    </div>` : `<p class="muted" style="font-size:12.5px">還沒有紀錄</p>`}
+    <div style="height:20px"></div>
+  `;
+}
+
+function renderFvProfile(){
+  const draft = state.fvDraft;
+  const list = [...DB.fvProfiles].sort((a,b)=>a.date<b.date?1:-1);
+  return `
+    <div class="topbar"><div class="back" data-action="backFvProfile">‹</div>
+      <div><div class="label">垂直跳表現分析</div><h1 style="font-size:22px">力量-速度剖面</h1></div></div>
+    <div class="note" style="border-left-color:var(--faint)">
+      <div class="label">目前只收原始資料，還不算F0/V0/Pmax</div>
+      <div style="margin-top:5px; font-size:13px; line-height:1.6">F-V剖面的計算公式(Samozino's method)需要精確的推導方程式，我還沒查到完整可信、沒被截斷的版本，寧可先不算，也不要把可能算錯的公式當真結果給你看。這裡先讓你記錄「不同負重對應的跳躍高度」，等公式查證完再回來加計算。</div>
+    </div>
+
+    ${!draft ? `
+    <h3>開始一次新的測驗</h3>
+    <div style="display:flex; gap:9px; margin-bottom:9px">
+      <input type="number" inputmode="decimal" id="fvBodyMass" placeholder="體重 kg">
+      <input type="number" inputmode="decimal" id="fvPushOff" placeholder="推蹬距離 Hpo cm">
+    </div>
+    <button class="btn btn-sm" data-action="startFvDraft" style="width:100%">開始記錄這次測驗</button>
+    ` : `
+    <h3>${fmtDate(draft.date)} 的測驗記錄中</h3>
+    <p class="muted" style="font-size:12px">體重 ${draft.bodyMassKg||'—'}kg・Hpo ${draft.pushOffCm||'—'}cm</p>
+    <div style="display:flex; gap:9px; margin:9px 0">
+      <input type="number" inputmode="decimal" id="fvTrialLoad" placeholder="這次負重 kg（徒手填0）">
+      <input type="number" inputmode="decimal" id="fvTrialHeight" placeholder="跳躍高度 cm">
+    </div>
+    <button class="btn btn-sm" data-action="addFvTrial" style="width:100%">加入這一跳</button>
+    ${draft.trials.length ? `
+    <div class="tl" style="padding-left:0; margin-top:10px">
+      ${draft.trials.map((t,i)=>`<div style="padding:9px 0; border-bottom:1px solid var(--line2); display:flex; justify-content:space-between">
+        <span>負重 ${t.loadKg}kg</span><span style="font-weight:700">${t.heightCm}cm</span>
+      </div>`).join('')}
+    </div>
+    ${fvScatter(draft.trials)}
+    ` : ''}
+    <div style="display:flex; gap:9px; margin-top:10px">
+      <button class="btn btn-sm" data-action="cancelFvDraft" style="flex:1">取消</button>
+      <button class="btn btn-sm btn-primary" data-action="saveFvDraft" style="flex:1">存這次測驗（共${draft.trials.length}跳）</button>
+    </div>
+    `}
+
+    <h3>歷史測驗</h3>
+    ${list.length ? list.map(p=>`<div class="card" style="margin:0 0 14px">
+      <div class="label">${fmtDate(p.date)} · 體重${p.bodyMassKg||'—'}kg · Hpo${p.pushOffCm||'—'}cm · ${p.trials.length}跳</div>
+      ${fvScatter(p.trials)}
+    </div>`).join('') : `<p class="muted" style="font-size:12.5px">還沒有紀錄</p>`}
     <div style="height:20px"></div>
   `;
 }
@@ -2004,23 +2817,12 @@ function renderMore(){
     </div>` : `<p class="muted" style="font-size:12.5px; margin-top:8px">還沒有紀錄。體重是判斷吃得夠不夠的唯一依據。</p>`}
 
     <h3>摸高測試</h3>
-    <p class="muted" style="font-size:12px; margin-bottom:8px">站立摸高是固定基準值，量一次就好；下面兩個是每次測試都要重新記錄的</p>
+    <p class="muted" style="font-size:12px; margin-bottom:8px">站立摸高是固定基準值，量一次就好——每次測試（原地跳／助跑跳）在首頁記錄</p>
     <div style="display:flex; gap:9px; margin-bottom:9px">
       <input type="number" inputmode="decimal" id="standingReachInput" placeholder="站立摸高 cm（基準值）"
         value="${DB.settings.standingReach!==null&&DB.settings.standingReach!==undefined?DB.settings.standingReach:''}">
       <button class="btn btn-sm" data-action="saveStandingReach" style="flex:0 0 auto">存基準值</button>
     </div>
-    <p class="muted" style="font-size:12px; margin-bottom:8px">PDF 建議每 2 週測一次，記錄原地跳跟助跑跳各自的摸高高度</p>
-    <div style="display:flex; gap:9px; margin-bottom:9px">
-      <input type="number" inputmode="decimal" id="jtStanding" placeholder="原地跳 cm">
-      <input type="number" inputmode="decimal" id="jtApproach" placeholder="助跑跳 cm">
-    </div>
-    <button class="btn btn-sm" data-action="logJumpTest" style="width:100%">記錄這次測試</button>
-    ${DB.jumpTests.length ? `<div class="util" style="margin-top:12px">
-      ${[...DB.jumpTests].sort((a,b)=>a.date<b.date?1:-1).slice(0,6).map(j=>`<div class="util-row" style="padding:11px 0">
-        <span class="k">${fmtDate(j.date)}</span>
-        <span style="font-family:var(--rounded); font-weight:700; color:${jumpGap(j)>0?'var(--mark)':'var(--danger)'}">${jumpGap(j)>0?'+':''}${jumpGap(j)}cm</span></div>`).join('')}
-    </div>` : ''}
 
     <h3>資料版本</h3>
     <div class="util">
@@ -2045,12 +2847,36 @@ function renderMore(){
     <h3>課表參考</h3>
     <button class="btn btn-sm" data-action="openReference" style="width:100%">起始重量・Deload・卡關診斷・飲食目標</button>
 
-    <h3>動作感測跳躍測試</h3>
-    <p class="muted" style="font-size:12px; margin-bottom:8px">實驗性功能，用手機加速度計估計跳躍高度</p>
-    <button class="btn btn-sm" data-action="openMotionTest" style="width:100%">開始測量</button>
-
     <h3>危險區</h3>
     <button class="btn btn-sm btn-danger" data-action="resetData" style="width:100%">清除所有資料</button>
+
+    <div style="height:8px; border-bottom:1px solid var(--line2)"></div>
+    <div class="pad" style="padding-top:22px; padding-bottom:0"><h1 style="font-size:20px">進階紀錄</h1>
+      <p class="muted" style="margin-top:4px">體脂、My Jump 2、力量-速度剖面——不是每天都要看的資料，獨立放在這裡</p></div>
+
+    <h3>體脂率</h3>
+    <p class="muted" style="font-size:12px; margin-bottom:8px">家用體脂計（生物電阻式）誤差常在 ±3–5%，看趨勢方向就好，不要看單次數字</p>
+    <div style="display:flex; gap:9px; align-items:stretch">
+      <input type="number" inputmode="decimal" id="bfInput" placeholder="%">
+      <button class="btn btn-sm" data-action="logBF" style="flex:0 0 auto">記錄</button>
+    </div>
+    ${DB.bodyComp.length>1 ? sparkline([...DB.bodyComp].sort((a,b)=>a.date<b.date?-1:1).map(b=>b.bodyFat)) : ''}
+    ${DB.bodyComp.length ? `<div class="util" style="margin-top:12px">
+      ${[...DB.bodyComp].reverse().slice(0,6).map(b=>`<div class="util-row" style="padding:11px 0">
+        <span class="k">${fmtDate(b.date)}</span>
+        <span style="font-family:var(--rounded); font-weight:700">${b.bodyFat}%</span></div>`).join('')}
+    </div>` : `<p class="muted" style="font-size:12.5px; margin-top:8px">還沒有紀錄。有連續多筆才看得出方向。</p>`}
+    ${(()=>{ if(DB.bodyComp.length<2) return ''; const sorted=[...DB.bodyComp].sort((a,b)=>a.date<b.date?-1:1);
+      const first=sorted[0].bodyFat, lastV=sorted[sorted.length-1].bodyFat, diff=Math.round((lastV-first)*10)/10;
+      return `<p class="muted" style="font-size:12px; margin-top:8px; line-height:1.6">目前課表的飲食目標是「維持或緩慢增重」，跟降體脂率是兩個不同方向的目標——這個 App 不會自動幫你改動作或組數，因為體脂變化主要由飲食熱量決定，不是加練就能解決；${diff===0?'目前沒有明顯變化':(diff>0?'這段時間體脂率上升了 '+Math.abs(diff)+'%':'這段時間體脂率下降了 '+Math.abs(diff)+'%')}，如果方向跟你的目標不一致，該調整的是飲食，不是課表。</p>`; })()}
+
+    <h3>My Jump 2 資料匯入</h3>
+    <p class="muted" style="font-size:12px; margin-bottom:8px">垂直跳測試資料，改用 My Jump 2 匯出的數值，不再用手機加速度計估算</p>
+    <button class="btn btn-sm" data-action="openJumpImport" style="width:100%">匯入 / 記錄跳躍資料</button>
+
+    <h3>力量-速度剖面</h3>
+    <p class="muted" style="font-size:12px; margin-bottom:8px">不同負重的跳躍高度，Samozino's method（實驗性，目前只存原始資料）</p>
+    <button class="btn btn-sm" data-action="openFvProfile" style="width:100%">記錄一次剖面測驗</button>
 
     <div style="height:34px"></div>
     <div class="label" style="text-align:center; opacity:.5">KENNY TRAINING · SOURCE PDF v1.0</div>
@@ -2062,7 +2888,12 @@ function syncSetFieldsFromDOM(si){
   const ex = state.currentSession.exercises[state.exIndex];
   ['weight','reps','rir'].forEach(field=>{
     const el = document.querySelector(`[data-setfield="${field}"][data-si="${si}"]`);
-    if(el) ex.sets[si][field] = el.value===''?null:Number(el.value);
+    if(!el) return;
+    // 這裡本來就正確區分空字串(null)跟真的填0（保留0，不是當成沒填）——這條不動。
+    // 只補NaN防呆：貼上非數字字串這種邊界情況，不要讓NaN悄悄存進資料裡。
+    if(el.value===''){ ex.sets[si][field] = null; return; }
+    const n = Number(el.value);
+    ex.sets[si][field] = isNaN(n) ? null : n;
   });
 }
 function showToast(msg){
@@ -2083,8 +2914,11 @@ function newSession(day, isBackfill){
     backfill: !!isBackfill,
     checkin: {energy:null, soreness:null, sleepHours:null},
     deload: false,
+    // B5：def 一律 shallow clone，不要直接掛 PROGRAM 範本的參照——
+    // PROGRAM_HOME[5] 跟 PROGRAM_GYM[5] 目前是同一個物件，沒 clone 的話任何未來
+    // 對 ex.def 欄位的修改都會同時污染居家版跟健身房版的 Day 5 範本。
     exercises: PROGRAM[day].exercises.map(def=>({
-      def: def,
+      def: {...def},
       sets: Array.from({length:def.sets}, ()=>({weight:null,reps:null,rir:def.type==='time'?null:'',done:false}))
     }))
   };
@@ -2097,8 +2931,27 @@ function bindEvents(){
       if(act==='startDay'){ state.currentDay=Number(el.dataset.day); state.currentSession=newSession(state.currentDay,false); state.exIndex=0; state.screen='today'; render(); }
       else if(act==='startBackfill'){ state.currentDay=Number(el.dataset.day); state.currentSession=newSession(state.currentDay,true); state.exIndex=0; state.screen='today'; render(); }
       else if(act==='goWorkout'){ state.screen='workout'; render(); }
-      else if(act==='backHome'){ state.screen='home'; render(); }
+      else if(act==='previewDay'){ state.previewDay=Number(el.dataset.day); state.screen='preview'; render(); }
+      else if(act==='backWorkout'){ state.screen='workout'; render(); }
+      else if(act==='backHome'){
+        if(state.screen==='today' && state.currentSession){
+          const doneCount = state.currentSession.exercises.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0);
+          if(doneCount>0 && !confirm('已經記錄了 '+doneCount+' 組，離開會取消這次訓練（不會存檔），確定要離開嗎？')) return;
+          state.currentSession = null;
+        }
+        state.screen='home'; render();
+      }
       else if(act==='openExercise'){ state.exIndex=Number(el.dataset.idx); state.screen='exercise'; render(); }
+      else if(act==='swapExercise'){
+        const ex = state.currentSession.exercises[state.exIndex];
+        const subInfo = GYM_SUBSTITUTE[ex.def.n];
+        if(!subInfo) return;
+        const newDef = findSubstituteDef(subInfo.sub);
+        if(!newDef){ alert('找不到對應的替代動作'); return; }
+        ex.def = newDef;
+        ex.sets = Array.from({length:newDef.sets}, ()=>({weight:null, reps:null, rir:newDef.type==='time'?null:'', done:false}));
+        render();
+      }
       else if(act==='backToday'){ state.screen='today'; render(); }
       else if(act==='prevOrNextExercise'){
         const dir = Number(el.dataset.dir);
@@ -2153,54 +3006,73 @@ function bindEvents(){
       else if(act==='backHistory'){ state.screen='history'; render(); }
       else if(act==='backMore'){ state.screen='more'; render(); }
       else if(act==='openReference'){ state.screen='reference'; render(); }
-      else if(act==='openMotionTest'){ state.motion={phase:'idle', mode:'cmj', batch:{trials:[], startedAt:null}}; state.screen='motionTest'; render(); }
-      else if(act==='startMotionTest'){ startMotionTest(); }
-      else if(act==='backMotionTest'){
-        if(!leaveMotionTestIfConfirmed()) return;
-        state.screen='more'; render();
+      else if(act==='openJumpImport'){ state.jumpImportPreview=null; state.screen='jumpImport'; render(); }
+      else if(act==='backJumpImport'){ state.jumpImportPreview=null; state.screen='more'; render(); }
+      else if(act==='parseJumpCsv'){
+        const text = document.getElementById('jumpCsvInput').value;
+        if(!text.trim()){ alert('請先貼上內容'); return; }
+        const device = document.getElementById('jumpCsvDevice').value.trim() || 'My Jump 2';
+        const familiarization = document.getElementById('jumpCsvFamiliarization').checked;
+        const result = parseJumpCsvText(text, {device, familiarization});
+        if(result.error){ alert(result.error); return; }
+        state.jumpImportPreview = result; render();
       }
-      else if(act==='setMotionMode'){
-        const hasBatch = state.motion && state.motion.batch && state.motion.batch.trials.length>0;
-        if(hasBatch && !confirm('切換模式會放棄目前這批未儲存的測量結果，確定要切換嗎？')) return;
-        state.motion = {phase:'idle', mode: el.dataset.mode, batch:{trials:[], startedAt:null}}; render();
-      }
-      else if(act==='saveMotionTest'){
-        if(state.motion.phase==='done'){
-          const batchTrials = (state.motion.batch && state.motion.batch.trials) || [];
-          if(batchTrials.length>0 && !confirm(`前面 ${batchTrials.length} 次不會一起存，確定只留這一跳？`)) return;
-          const trial = makeTrial(state.motion.mode, state.motion.result, 'VALID');
-          saveMotionSession([trial]);
+      else if(act==='cancelJumpImport'){ state.jumpImportPreview=null; render(); }
+      else if(act==='confirmJumpImport'){
+        if(state.jumpImportPreview){
+          const existingKeys = new Set(DB.jumpMeasurements.map(jumpDedupKey));
+          let added=0, skipped=0;
+          state.jumpImportPreview.entries.forEach(e=>{
+            const key = jumpDedupKey(e);
+            if(existingKeys.has(key)){ skipped++; return; }
+            existingKeys.add(key);
+            DB.jumpMeasurements.push(e); added++;
+          });
+          state.jumpImportPreview = null; saveDB();
+          alert('匯入完成：新增 '+added+' 筆，略過重複 '+skipped+' 筆');
         }
-        state.motion={phase:'idle', mode:(state.motion&&state.motion.mode)||'cmj', batch:{trials:[], startedAt:null}}; render();
+        render();
       }
-      else if(act==='addToMotionBatch'){
-        if(state.motion.phase==='done'){
-          const mode = state.motion.mode;
-          const trial = makeTrial(mode, state.motion.result, 'VALID');
-          const prevBatch = state.motion.batch || {trials:[], startedAt:null};
-          const batch = {trials: prevBatch.trials.concat([trial]), startedAt: prevBatch.startedAt || new Date().toISOString()};
-          state.motion = {phase:'idle', mode, batch};
-          startMotionTest();
-        }
+      else if(act==='saveManualJump'){
+        const vals = {
+          type: document.getElementById('jmType').value,
+          date: document.getElementById('jmDate').value,
+          heightCm: document.getElementById('jmHeight').value,
+          flightTimeMs: document.getElementById('jmFlight').value,
+          contactTimeMs: document.getElementById('jmContact').value,
+          rsi: document.getElementById('jmRsi').value,
+          device: document.getElementById('jmDevice').value.trim() || 'My Jump 2',
+          familiarization: document.getElementById('jmFamiliarization').checked,
+          source: 'manual'
+        };
+        if(!vals.heightCm && !vals.flightTimeMs){ alert('高度跟飛行時間至少要填一個'); return; }
+        const entry = buildJumpEntry(vals);
+        if(entry.status==='NEEDS_REVIEW' && !confirm('這筆資料有問題：\n'+entry.flags.join('\n')+'\n仍要儲存嗎？')) return;
+        DB.jumpMeasurements.push(entry); saveDB(); render();
       }
-      else if(act==='discardMotionTrial'){
-        if(state.motion.phase==='done'){
-          const mode = state.motion.mode;
-          const trial = makeTrial(mode, state.motion.result, 'RETEST_DISCARDED');
-          const prevBatch = state.motion.batch || {trials:[], startedAt:null};
-          const batch = {trials: prevBatch.trials.concat([trial]), startedAt: prevBatch.startedAt || new Date().toISOString()};
-          state.motion = {phase:'idle', mode, batch};
-          startMotionTest();
-        }
+      else if(act==='openFvProfile'){ state.fvDraft=null; state.screen='fvProfile'; render(); }
+      else if(act==='backFvProfile'){ state.fvDraft=null; state.screen='more'; render(); }
+      else if(act==='startFvDraft'){
+        const bodyMassKg = document.getElementById('fvBodyMass').value;
+        const pushOffCm = document.getElementById('fvPushOff').value;
+        state.fvDraft = fvBuildProfile({bodyMassKg, pushOffCm});
+        render();
       }
-      else if(act==='saveMotionBatch'){
-        if(state.motion.phase==='done'){
-          const currentTrial = makeTrial(state.motion.mode, state.motion.result, 'VALID');
-          const prevBatch = state.motion.batch || {trials:[], startedAt:null};
-          const allTrials = prevBatch.trials.concat([currentTrial]);
-          saveMotionSession(allTrials);
-        }
-        state.motion={phase:'idle', mode:(state.motion&&state.motion.mode)||'cmj', batch:{trials:[], startedAt:null}}; render();
+      else if(act==='cancelFvDraft'){ state.fvDraft=null; render(); }
+      else if(act==='addFvTrial'){
+        const loadKg = Number(document.getElementById('fvTrialLoad').value);
+        const heightCm = Number(document.getElementById('fvTrialHeight').value);
+        if(!heightCm){ alert('請填跳躍高度'); return; }
+        state.fvDraft.trials.push({loadKg: loadKg||0, heightCm});
+        render();
+      }
+      else if(act==='saveFvDraft'){
+        // B4：公式還是不算（這條不動），但至少要3個不同負重才能存成一份剖面——
+        // 1跳只是一個點，不構成剖面，存起來會誤導以為是完整的一次測驗。
+        const distinctLoads = new Set(state.fvDraft.trials.map(t=>t.loadKg)).size;
+        if(distinctLoads<3){ alert('至少要有3個不同負重才能存成一份剖面（目前 '+distinctLoads+' 個不同負重），再多加幾跳'); return; }
+        DB.fvProfiles.push(state.fvDraft);
+        state.fvDraft = null; saveDB(); render();
       }
       else if(act==='toggleTheme'){ DB.settings.theme = DB.settings.theme==='dark'?'light':'dark'; applyTheme(); saveDB(); render(); }
       else if(act==='toggleMode'){
@@ -2220,9 +3092,16 @@ function bindEvents(){
         render();
       }
       else if(act==='logBW'){
-        const v = Number(document.getElementById('bwInput').value);
-        if(!v){ alert('請輸入體重'); return; }
-        DB.bodyweight.push({date:todayISO(), weight:v}); saveDB(); render();
+        const raw = document.getElementById('bwInput').value;
+        const r = sanitizeNumber(raw, {min:20, max:300, allowZero:false});
+        if(!r.valid || r.value===null){ alert('請輸入體重：'+(r.reason||'不能空白')); return; }
+        DB.bodyweight.push({date:todayISO(), weight:r.value}); saveDB(); render();
+      }
+      else if(act==='logBF'){
+        const raw = document.getElementById('bfInput').value;
+        const r = sanitizeNumber(raw, {min:3, max:60, allowZero:false});
+        if(!r.valid || r.value===null){ alert('請輸入合理的體脂率（%）：'+(r.reason||'不能空白')); return; }
+        DB.bodyComp.push({date:todayISO(), bodyFat:r.value}); saveDB(); render();
       }
       else if(act==='saveStandingReach'){
         const v = Number(document.getElementById('standingReachInput').value);
@@ -2253,6 +3132,7 @@ function bindEvents(){
         catch(err){ alert('JSON 格式錯誤，匯入失敗，資料未變更'); }
       }
       else if(act==='toggleTrend'){ state.openTrend = state.openTrend===el.dataset.name ? null : el.dataset.name; render(); }
+      else if(act==='toggleTier3'){ state.tier3Open = !state.tier3Open; render(); }
       else if(act==='restoreBackup'){
         listBackups().then(keys=>{
           if(!keys.length){ alert('目前沒有任何自動備份。\n備份只會在資料版本升級或匯入時產生。'); return; }
@@ -2273,7 +3153,7 @@ function bindEvents(){
       }
       else if(act==='resetData'){
         if(confirm('確定要清除所有訓練紀錄嗎？此動作無法復原。')){
-          DB = {schemaVersion:CURRENT_SCHEMA, sessions:[], notes:[], bodyweight:[], jumpTests:[], motionTests:[], settings:DB.settings, meta:DB.meta||{}};
+          DB = {schemaVersion:CURRENT_SCHEMA, sessions:[], notes:[], bodyweight:[], bodyComp:[], jumpTests:[], motionTests:[], jumpMeasurements:[], fvProfiles:[], settings:DB.settings, meta:DB.meta||{}};
           saveDB(); render();
         }
       }
@@ -2289,9 +3169,16 @@ function bindEvents(){
   });
   const bfDate = document.getElementById('backfillDate');
   if(bfDate) bfDate.onchange = ()=>{ state.currentSession.date = bfDate.value; };
+  const sleepInput = document.getElementById('sleepHoursInput');
+  if(sleepInput) sleepInput.oninput = ()=>{
+    // 跟 sleep 一樣不即時 render()（保留輸入焦點），但要先寫進 state，
+    // 這樣之後點精力/痠痛觸發的重繪，readinessNote() 才能看到剛剛打的睡眠時數。
+    const v = Number(sleepInput.value);
+    state.currentSession.checkin = state.currentSession.checkin || {energy:null, soreness:null, sleepHours:null};
+    state.currentSession.checkin.sleepHours = (sleepInput.value!=='' && !isNaN(v)) ? v : null;
+  };
   document.querySelectorAll('.navitem').forEach(el=>{
     el.onclick = ()=>{
-      if(!leaveMotionTestIfConfirmed()) return;
       const nav = el.dataset.nav;
       if(nav==='workout' && state.currentSession){ state.screen='today'; }
       else { state.screen = nav; }
@@ -2300,94 +3187,6 @@ function bindEvents(){
   });
 }
 
-// 實際串接手機感測器。iOS 13+ 的 Safari 要求先呼叫 requestPermission()（必須直接在使用者
-// 點擊的當下呼叫，不能延遲），使用者同意後才能監聽 devicemotion 事件；Android／舊版 iOS
-// 沒有這個權限機制，直接監聽即可。這段邏輯無法在沒有真實手機的環境驗證，所以每一步
-// 都包在 try/catch 裡，任何失敗都會停在明確的錯誤訊息，不會讓整個 App 卡住或崩潰。
-// 唯一一套「離開測量頁」的邏輯，底部導覽列跟頁面內的返回鍵都走這裡，不允許有第二套判斷。
-// 規則鎖死：有未存的 batch 就問，確認離開才清空；取消就留在原地，batch 原封不動。
-// 不會有「記憶體留著、下次進來才被清掉」這種中間狀態。
-function leaveMotionTestIfConfirmed(){
-  if(state.screen !== 'motionTest') return true;
-  const hasBatch = state.motion && state.motion.batch && state.motion.batch.trials.length>0;
-  if(hasBatch && !confirm('離開會放棄目前這批未儲存的測量結果，確定要離開嗎？')) return false;
-  if(hasBatch){
-    state.motion = {phase:'idle', mode:(state.motion&&state.motion.mode)||'cmj', batch:{trials:[], startedAt:null}};
-  }
-  return true;
-}
-
-async function startMotionTest(){
-  // batch 是「這次測驗 session」的資料，跟單次 trial 的 phase/result 分開存放。
-  // 這個函式每個階段轉換都只能動 phase/countdown/result/message/samples，
-  // mode 跟 batch 一路帶著走，絕對不能整包覆蓋掉。
-  const mode = (state.motion && state.motion.mode) || 'cmj';
-  const batch = (state.motion && state.motion.batch) || {trials:[], startedAt:null};
-  state.motion = {phase:'requesting', mode, batch};
-  render();
-  try{
-    if(typeof DeviceMotionEvent === 'undefined'){
-      state.motion = {phase:'error', mode, batch, message:'這個瀏覽器不支援動作感測，無法使用這個功能'};
-      render(); return;
-    }
-    if(typeof DeviceMotionEvent.requestPermission === 'function'){
-      const perm = await DeviceMotionEvent.requestPermission();
-      if(perm !== 'granted'){
-        state.motion = {phase:'error', mode, batch, message:'沒有取得動作感測權限，無法測量'};
-        render(); return;
-      }
-    }
-  }catch(e){
-    state.motion = {phase:'error', mode, batch, message:'請求感測權限時發生錯誤：'+e.message};
-    render(); return;
-  }
-
-  // 準備階段：給2秒鐘喬好手機位置，倒數期間完全不收集訊號，避免你手忙腳亂造成的雜訊
-  await new Promise(resolve=>{
-    let count = 2;
-    state.motion = {phase:'ready', mode, batch, countdown:count};
-    render();
-    const iv = setInterval(()=>{
-      count--;
-      if(count<=0){ clearInterval(iv); resolve(); }
-      else { state.motion = {phase:'ready', mode, batch, countdown:count}; render(); }
-    }, 1000);
-  });
-
-  const samples = [];
-  const startT = performance.now();
-  let handler, timeoutId;
-  const finish = (result)=>{
-    window.removeEventListener('devicemotion', handler);
-    clearTimeout(timeoutId);
-    if(result.ok){
-      state.motion = {phase:'done', mode, batch, result, samples};
-    } else {
-      state.motion = {phase:'error', mode, batch, message:result.reason, samples};
-    }
-    render();
-  };
-
-  handler = (e)=>{
-    const a = e.accelerationIncludingGravity;
-    if(!a || a.x===null) return;
-    const mag = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
-    samples.push({t: performance.now()-startT, mag});
-  };
-
-  try{
-    window.addEventListener('devicemotion', handler);
-  }catch(e){
-    state.motion = {phase:'error', mode, batch, message:'無法啟動動作感測：'+e.message};
-    render(); return;
-  }
-
-  state.motion = {phase:'listening', mode, batch};
-  render();
-  timeoutId = setTimeout(()=>{
-    finish(mode==='dropjump' ? analyzeDropJumpSamples(samples) : analyzeMotionSamples(samples));
-  }, 3000);
-}
 
 
 function startRestTimer(seconds){
