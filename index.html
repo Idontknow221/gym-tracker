@@ -327,15 +327,28 @@ const GYM_SUBSTITUTE = {
   "Face Pull": {sub:"Reverse Fly", note:"15下 → 18下"},
   "Overhead Extension": {sub:"Bench Dip", note:"12下 → 15下"},
   "Standing Calf Raise": {sub:"Single-leg Calf Raise", note:"10下 → 15–20下/邊"},
-  "Seated Calf Raise": {sub:"Seated Calf Raise（腿壓啞鈴）", note:"12下 → 20下"}
+  "Seated Calf Raise": {sub:"Seated Calf Raise（腿壓啞鈴）", note:"12下 → 20下"},
+  // 這6項是Kenny發現原本沒有替代動作的缺口，補上真的存在於課表裡的動作當替代，
+  // 不是憑空發明新動作——優先找同肌群、器材需求更低的既有動作。
+  "Bulgarian Split Squat": {sub:"Reverse Lunge", note:"10下/邊 → 12下/邊（沒有長凳可放後腳時用）"},
+  "Seated DB Press": {sub:"DB Shoulder Press", note:"10下 → 8下（沒有椅子時，站姿做）"},
+  "Cable Row": {sub:"Chest-Supported Row", note:"12下 → 12下（沒有繩索機時，用啞鈴代替）"},
+  "Incline DB Curl": {sub:"Hammer Curl", note:"10下 → 12下（沒有斜板椅時）"},
+  "Hammer Curl": {sub:"Incline DB Curl", note:"12下 → 10下（想換個角度刺激時）"},
+  "Rope Pushdown": {sub:"Overhead Extension", note:"15下 → 12下（沒有繩索機時）"}
 };
 
 // 找替代動作的定義——不限同一天，因為替代動作本質上是同一個動作，換到哪天都是同一個定義。
 // Day5選配日沒有專屬居家版本，Face Pull的替代（Reverse Fly）要從Day4才找得到，
-// 限制在同一天找的話會漏掉這種情況。
+// 限制在同一天找的話會漏掉這種情況。同時也要搜PROGRAM_GYM——有些替代動作本身就是健身房版
+// 的另一個動作（例如Cable Row換成Chest-Supported Row），不是只有居家版能當替代對象。
 function findSubstituteDef(name){
   for(const day of Object.keys(PROGRAM_HOME)){
     const found = PROGRAM_HOME[day].exercises.find(e=>e.n===name);
+    if(found) return found;
+  }
+  for(const day of Object.keys(PROGRAM_GYM)){
+    const found = PROGRAM_GYM[day].exercises.find(e=>e.n===name);
     if(found) return found;
   }
   return null;
@@ -1433,8 +1446,28 @@ function renderHome(){
     ${homeJumpTestSection()}
 
     <h3>這週</h3>
-    <div class="week">${days.map(d=>`<i class="${d.has?'on':''} ${d.today?'today':''}"></i>`).join('')}</div>
-    <div class="week-lab">${['一','二','三','四','五','六','日'].map(x=>`<span>${x}</span>`).join('')}</div>
+    <div class="tl" style="padding-left:0; margin-top:0">
+      ${days.map(d=>{
+        const daySessions = DB.sessions.filter(s=>s.date===d.iso);
+        const weekdayLabel = ['一','二','三','四','五','六','日'][days.indexOf(d)];
+        if(!daySessions.length){
+          return `<div class="tl-item" style="border-bottom:1px solid var(--line2); opacity:${d.today?1:.55}">
+            <div class="tl-date" style="${d.today?'color:var(--mark)':''}">週${weekdayLabel}</div>
+            <div class="tl-body"><div class="tl-meta">${d.today?'今天還沒練':'沒有訓練'}</div></div>
+          </div>`;
+        }
+        return daySessions.map(s=>`
+          <div class="tl-item" data-action="viewSession" data-id="${s.id}" style="border-bottom:1px solid var(--line2)">
+            <div class="tl-date" style="${d.today?'color:var(--mark)':''}">週${weekdayLabel}</div>
+            <div class="tl-body">
+              <div class="tl-name">${progFor(s.mode)[s.day].name}${s.backfill?' <span class="tag tag-mid" style="font-size:9.5px; vertical-align:middle">補登</span>':''}</div>
+              <div class="tl-meta">${s.exercises.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0)} SETS · ${s.mode==='home'?'HOME':'GYM'}</div>
+            </div>
+            <span style="color:var(--faint)">›</span>
+          </div>`).join('');
+      }).join('')}
+    </div>
+    <p class="muted" style="font-size:11px; margin-top:8px">補登的訓練也算進這週，標「補登」的是事後回填的日期，不是當天記錄的</p>
 
     <h3>累計</h3>
     <div class="flow">
@@ -1503,9 +1536,10 @@ function renderPreview(){
     <div class="tl" style="padding-left:0">
       ${prog.exercises.map(def=>`
         <div style="padding:13px 0; border-bottom:1px solid var(--line2)">
-          <div style="font-weight:700; font-size:15px">${dn(def.n)}</div>
+          <div style="font-weight:700; font-size:15px">${dn(def.n)}${(!isHome && GYM_SUBSTITUTE[def.n] && findSubstituteDef(GYM_SUBSTITUTE[def.n].sub))?' <span class="tag tag-mid" style="font-size:10px; vertical-align:middle">可替代</span>':''}</div>
           <div class="rung-meta" style="margin-top:3px">${def.sets}×${def.reps} · RIR ${def.rir}${enSub(def.n)?' · '+enSub(def.n):''}</div>
           ${def.cue ? `<p class="muted" style="font-size:12.5px; margin-top:5px; line-height:1.5">${escapeHtml(def.cue)}</p>` : ''}
+          ${(!isHome && GYM_SUBSTITUTE[def.n] && findSubstituteDef(GYM_SUBSTITUTE[def.n].sub)) ? `<p class="muted" style="font-size:11.5px; margin-top:4px">器材沒有可換：${dn(GYM_SUBSTITUTE[def.n].sub)}（開始訓練後可以在動作頁面直接換）</p>` : ''}
         </div>`).join('')}
     </div>
 
@@ -1564,7 +1598,7 @@ function renderToday(){
         <div class="rung ${allDone?'done':''} ${isCurrent?'now':''}" data-action="openExercise" data-idx="${i}">
           <div class="node">${allDone?'✓':''}</div>
           <div style="flex:1; min-width:0">
-            <div class="rung-name">${dn(def.n)}</div>
+            <div class="rung-name">${dn(def.n)}${(!def.home && GYM_SUBSTITUTE[def.n] && findSubstituteDef(GYM_SUBSTITUTE[def.n].sub))?' <span class="tag tag-mid" style="font-size:10px; vertical-align:middle">可替代</span>':''}</div>
             <div class="rung-meta">${def.sets}×${def.reps} · RIR ${def.rir}${enSub(def.n)?' · '+enSub(def.n):''}</div>
           </div>
           <div class="rung-count">${done}<span style="color:var(--faint)">/${def.sets}</span></div>
@@ -1617,6 +1651,10 @@ function renderExercise(){
     <div class="note" style="border-left-color:var(--faint)">
       <div class="label">器材沒有或維修中？</div>
       <div style="margin-top:5px; font-size:14px">可以換成 <b>${dn(GYM_SUBSTITUTE[def.n].sub)}</b>（${GYM_SUBSTITUTE[def.n].note}），照 PDF 的健身房→居家對照表，訓練效果對應</div>
+      <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(GYM_SUBSTITUTE[def.n].sub+' exercise form tutorial')}" target="_blank" rel="noopener"
+         style="display:inline-flex; align-items:center; gap:5px; margin-top:8px; font-size:12px; color:var(--mark); text-decoration:none; font-weight:700">
+         ▶ 先看看這個替代動作怎麼做
+      </a>
       <button class="btn btn-sm" data-action="swapExercise" style="margin-top:10px; width:100%">換成這個動作</button>
     </div>` : ''}
 
