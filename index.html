@@ -1354,6 +1354,9 @@ function render(){
   else if(state.screen==='today') app.innerHTML = renderToday();
   else if(state.screen==='jumpImport') app.innerHTML = renderJumpImport();
   else if(state.screen==='fvProfile') app.innerHTML = renderFvProfile();
+  else if(state.screen==='settingsGeneral') app.innerHTML = renderSettingsGeneral();
+  else if(state.screen==='bodyMetrics') app.innerHTML = renderBodyMetrics();
+  else if(state.screen==='jumpCategory') app.innerHTML = renderJumpCategory();
   else if(state.screen==='exercise') app.innerHTML = renderExercise();
   else if(state.screen==='complete') app.innerHTML = renderComplete();
   else if(state.screen==='history') app.innerHTML = renderHistory();
@@ -2827,11 +2830,38 @@ function renderReference(){
 }
 
 function renderMore(){
+  return `
+    <div class="pad"><h1>設定</h1></div>
+    <div class="tl" style="padding-left:0; margin-top:14px">
+      <div class="tl-item" data-action="openSettingsGeneral">
+        <div class="tl-body"><div class="tl-name">一般設定</div>
+          <div class="tl-meta">場地・深色模式・摸高基準・備份・課表參考・清除資料</div></div>
+        <span style="color:var(--faint)">›</span>
+      </div>
+      <div class="tl-item" data-action="openBodyMetrics">
+        <div class="tl-body"><div class="tl-name">身體數據</div>
+          <div class="tl-meta">體重・體脂率趨勢</div></div>
+        <span style="color:var(--faint)">›</span>
+      </div>
+      <div class="tl-item" data-action="openJumpCategory">
+        <div class="tl-body"><div class="tl-name">跳躍測試</div>
+          <div class="tl-meta">My Jump 2 匯入・力量-速度剖面</div></div>
+        <span style="color:var(--faint)">›</span>
+      </div>
+    </div>
+    <div style="height:34px"></div>
+    <div class="label" style="text-align:center; opacity:.5">KENNY TRAINING · SOURCE PDF v1.0</div>
+    <div style="height:20px"></div>
+  `;
+}
+
+function renderSettingsGeneral(){
   const dark = DB.settings.theme==='dark';
   const isHome = DB.settings.mode==='home';
   const mig = (DB.meta&&DB.meta.migrations&&DB.meta.migrations.length) ? DB.meta.migrations[DB.meta.migrations.length-1] : null;
   return `
-    <div class="pad"><h1>設定</h1></div>
+    <div class="topbar"><div class="back" data-action="backMore">‹</div>
+      <div><div class="label">設定</div><h1 style="font-size:22px">一般設定</h1></div></div>
     <div class="util" style="margin-top:14px">
       <div class="util-row"><span>訓練場地</span>
         <div style="display:flex; align-items:center; gap:10px">
@@ -2841,18 +2871,6 @@ function renderMore(){
       <div class="util-row"><span>深色模式</span>
         <div class="toggle ${dark?'on':''}" data-action="toggleTheme"></div></div>
     </div>
-
-    <h3>體重</h3>
-    <div style="display:flex; gap:9px; align-items:stretch">
-      <input type="number" inputmode="decimal" id="bwInput" placeholder="kg">
-      <button class="btn btn-sm" data-action="logBW" style="flex:0 0 auto">記錄</button>
-    </div>
-    ${DB.bodyweight.length>1 ? sparkline([...DB.bodyweight].sort((a,b)=>a.date<b.date?-1:1).map(b=>b.weight)) : ''}
-    ${DB.bodyweight.length ? `<div class="util" style="margin-top:12px">
-      ${[...DB.bodyweight].reverse().slice(0,6).map(b=>`<div class="util-row" style="padding:11px 0">
-        <span class="k">${fmtDate(b.date)}</span>
-        <span style="font-family:var(--rounded); font-weight:700">${b.weight} kg</span></div>`).join('')}
-    </div>` : `<p class="muted" style="font-size:12.5px; margin-top:8px">還沒有紀錄。體重是判斷吃得夠不夠的唯一依據。</p>`}
 
     <h3>摸高測試</h3>
     <p class="muted" style="font-size:12px; margin-bottom:8px">站立摸高是固定基準值，量一次就好——每次測試（原地跳／助跑跳）在首頁記錄</p>
@@ -2887,10 +2905,26 @@ function renderMore(){
 
     <h3>危險區</h3>
     <button class="btn btn-sm btn-danger" data-action="resetData" style="width:100%">清除所有資料</button>
+    <div style="height:20px"></div>
+  `;
+}
 
-    <div style="height:8px; border-bottom:1px solid var(--line2)"></div>
-    <div class="pad" style="padding-top:22px; padding-bottom:0"><h1 style="font-size:20px">進階紀錄</h1>
-      <p class="muted" style="margin-top:4px">體脂、My Jump 2、力量-速度剖面——不是每天都要看的資料，獨立放在這裡</p></div>
+function renderBodyMetrics(){
+  return `
+    <div class="topbar"><div class="back" data-action="backMore">‹</div>
+      <div><div class="label">設定</div><h1 style="font-size:22px">身體數據</h1></div></div>
+
+    <h3>體重</h3>
+    <div style="display:flex; gap:9px; align-items:stretch">
+      <input type="number" inputmode="decimal" id="bwInput" placeholder="kg">
+      <button class="btn btn-sm" data-action="logBW" style="flex:0 0 auto">記錄</button>
+    </div>
+    ${DB.bodyweight.length>1 ? sparkline([...DB.bodyweight].sort((a,b)=>a.date<b.date?-1:1).map(b=>b.weight)) : ''}
+    ${DB.bodyweight.length ? `<div class="util" style="margin-top:12px">
+      ${[...DB.bodyweight].reverse().slice(0,6).map(b=>`<div class="util-row" style="padding:11px 0">
+        <span class="k">${fmtDate(b.date)}</span>
+        <span style="font-family:var(--rounded); font-weight:700">${b.weight} kg</span></div>`).join('')}
+    </div>` : `<p class="muted" style="font-size:12.5px; margin-top:8px">還沒有紀錄。體重是判斷吃得夠不夠的唯一依據。</p>`}
 
     <h3>體脂率</h3>
     <p class="muted" style="font-size:12px; margin-bottom:8px">家用體脂計（生物電阻式）誤差常在 ±3–5%，看趨勢方向就好，不要看單次數字</p>
@@ -2907,6 +2941,14 @@ function renderMore(){
     ${(()=>{ if(DB.bodyComp.length<2) return ''; const sorted=[...DB.bodyComp].sort((a,b)=>a.date<b.date?-1:1);
       const first=sorted[0].bodyFat, lastV=sorted[sorted.length-1].bodyFat, diff=Math.round((lastV-first)*10)/10;
       return `<p class="muted" style="font-size:12px; margin-top:8px; line-height:1.6">目前課表的飲食目標是「維持或緩慢增重」，跟降體脂率是兩個不同方向的目標——這個 App 不會自動幫你改動作或組數，因為體脂變化主要由飲食熱量決定，不是加練就能解決；${diff===0?'目前沒有明顯變化':(diff>0?'這段時間體脂率上升了 '+Math.abs(diff)+'%':'這段時間體脂率下降了 '+Math.abs(diff)+'%')}，如果方向跟你的目標不一致，該調整的是飲食，不是課表。</p>`; })()}
+    <div style="height:20px"></div>
+  `;
+}
+
+function renderJumpCategory(){
+  return `
+    <div class="topbar"><div class="back" data-action="backMore">‹</div>
+      <div><div class="label">設定</div><h1 style="font-size:22px">跳躍測試</h1></div></div>
 
     <h3>My Jump 2 資料匯入</h3>
     <p class="muted" style="font-size:12px; margin-bottom:8px">垂直跳測試資料，改用 My Jump 2 匯出的數值，不再用手機加速度計估算</p>
@@ -2915,9 +2957,6 @@ function renderMore(){
     <h3>力量-速度剖面</h3>
     <p class="muted" style="font-size:12px; margin-bottom:8px">不同負重的跳躍高度，Samozino's method（實驗性，目前只存原始資料）</p>
     <button class="btn btn-sm" data-action="openFvProfile" style="width:100%">記錄一次剖面測驗</button>
-
-    <div style="height:34px"></div>
-    <div class="label" style="text-align:center; opacity:.5">KENNY TRAINING · SOURCE PDF v1.0</div>
     <div style="height:20px"></div>
   `;
 }
@@ -3045,7 +3084,7 @@ function bindEvents(){
       else if(act==='backMore'){ state.screen='more'; render(); }
       else if(act==='openReference'){ state.screen='reference'; render(); }
       else if(act==='openJumpImport'){ state.jumpImportPreview=null; state.screen='jumpImport'; render(); }
-      else if(act==='backJumpImport'){ state.jumpImportPreview=null; state.screen='more'; render(); }
+      else if(act==='backJumpImport'){ state.jumpImportPreview=null; state.screen='jumpCategory'; render(); }
       else if(act==='parseJumpCsv'){
         const text = document.getElementById('jumpCsvInput').value;
         if(!text.trim()){ alert('請先貼上內容'); return; }
@@ -3089,7 +3128,10 @@ function bindEvents(){
         DB.jumpMeasurements.push(entry); saveDB(); render();
       }
       else if(act==='openFvProfile'){ state.fvDraft=null; state.screen='fvProfile'; render(); }
-      else if(act==='backFvProfile'){ state.fvDraft=null; state.screen='more'; render(); }
+      else if(act==='openSettingsGeneral'){ state.screen='settingsGeneral'; render(); }
+      else if(act==='openBodyMetrics'){ state.screen='bodyMetrics'; render(); }
+      else if(act==='openJumpCategory'){ state.screen='jumpCategory'; render(); }
+      else if(act==='backFvProfile'){ state.fvDraft=null; state.screen='jumpCategory'; render(); }
       else if(act==='startFvDraft'){
         const bodyMassKg = document.getElementById('fvBodyMass').value;
         const pushOffCm = document.getElementById('fvPushOff').value;
