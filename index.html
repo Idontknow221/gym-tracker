@@ -859,7 +859,7 @@ let state = {screen:"home", currentDay:null, currentSession:null, exIndex:0, tim
    weight / reps / rir / date / note / bodyweight。這條規則由
    「資料指紋」在程式層強制，不是靠自律。
    ============================================================ */
-const CURRENT_SCHEMA = 8;
+const CURRENT_SCHEMA = 9;
 
 /* 舊資料種子（SEED）。
    用途：把手機上舊版的資料直接烘進這個檔案，開啟就有，不用手動貼上匯入。
@@ -1021,6 +1021,20 @@ const MIGRATIONS = [
     up: db => {
       if(!Array.isArray(db.fvProfiles)) db.fvProfiles = [];
       db.schemaVersion = 8;
+    }
+  },
+  {
+    // v9：訓練時長（開始/結束時間戳），純附加欄位。舊 session 一律補 null——
+    // 沒有 startTime 就沒辦法回推，不硬湊假資料。用途：讓「訓練時長」能顯示在
+    // 紀錄截圖上，符合政府運動獎勵活動（如運動i台灣）要求的「運動日期＋時長」佐證格式。
+    from:8, to:9, name:'add-session-duration', mutatesValues:false,
+    guard: db => db.schemaVersion===undefined || db.schemaVersion<9,
+    up: db => {
+      db.sessions.forEach(s=>{
+        if(typeof s.startTime!=='number') s.startTime = null;
+        if(typeof s.endTime!=='number') s.endTime = null;
+      });
+      db.schemaVersion = 9;
     }
   }
 ];
@@ -2018,15 +2032,30 @@ function renderHistory(){
   return `<div class="pad"><h1>紀錄</h1><p class="muted">${DB.sessions.length} 次訓練，由近到遠</p></div><div class="tl">${html}</div>`;
 }
 
+// 開始/結束時間戳都在才算時長；不足1分鐘算1分鐘（避免顯示「0分鐘」看起來像沒運動）。
+function sessionDurationMin(s){
+  if(typeof s.startTime!=='number' || typeof s.endTime!=='number') return null;
+  const min = Math.round((s.endTime - s.startTime)/60000);
+  return Math.max(1, min);
+}
 function renderSessionDetail(){
   const s = DB.sessions.find(x=>x.id===state.viewingId);
   if(!s) return `<div class="empty"><p class="muted">找不到這筆紀錄</p></div>`;
   const sets = s.exercises.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0);
   const vol = s.exercises.reduce((a,e)=>a+(e.def.weighted?e.sets.filter(x=>x.done).reduce((b,x)=>b+(x.weight||0)*(x.reps||0),0):0),0);
+  const durMin = sessionDurationMin(s);
   return `
     <div class="topbar"><div class="back" data-action="backHistory">‹</div>
-      <div style="flex:1; min-width:0"><div class="label">${s.date.replace(/-/g,'.')} · ${s.mode==='home'?'居家':'健身房'}${s.backfill?' · 補登':''}</div>
+      <div style="flex:1; min-width:0"><div class="label">${s.date.replace(/-/g,'.')}${durMin?' · '+durMin+' 分鐘':''} · ${s.mode==='home'?'居家':'健身房'}${s.backfill?' · 補登':''}</div>
       <h1 style="font-size:22px; overflow-wrap:break-word">${progFor(s.mode)[s.day].name}</h1></div></div>
+    ${durMin ? `
+    <div style="display:flex; align-items:baseline; gap:8px; padding:14px 0 4px">
+      <span class="label">訓練時長</span>
+      <b style="font-family:var(--rounded); font-size:32px; line-height:1">${durMin}</b>
+      <span class="muted" style="font-size:13px">分鐘</span>
+    </div>
+    <div class="muted" style="font-size:12px; margin-bottom:6px">日期 ${s.date} · 可作為運動i台灣等活動的紀錄截圖</div>
+    ` : ''}
     <div class="readout">
       <div><span class="label">完成組數</span><b>${sets}</b></div>
       ${vol>0?`<div><span class="label">訓練量 KG</span><b>${Math.round(vol)}</b></div>`:''}
@@ -2989,6 +3018,10 @@ function newSession(day, isBackfill){
     date: todayISO(),
     note: '',
     backfill: !!isBackfill,
+    // 補登的訓練不是「現在」發生的，記錄開始時間毫無意義（會量到打字補登的時間，
+    // 不是實際運動時長），所以只有現場訓練才記 startTime。
+    startTime: isBackfill ? null : Date.now(),
+    endTime: null,
     checkin: {energy:null, soreness:null, sleepHours:null},
     deload: false,
     // B5：def 一律 shallow clone，不要直接掛 PROGRAM 範本的參照——
@@ -3074,6 +3107,9 @@ function bindEvents(){
         const sleepVal = sleepEl ? Number(sleepEl.value) : NaN;
         state.currentSession.checkin = state.currentSession.checkin || {energy:null, soreness:null, sleepHours:null};
         state.currentSession.checkin.sleepHours = (sleepEl && sleepEl.value!=='' && !isNaN(sleepVal)) ? sleepVal : null;
+        // 只有本來就有 startTime（非補登）才蓋 endTime；補登場次兩者都留 null，
+        // 詳細頁會直接不顯示時長，不會冒出一個假的「0分鐘」。
+        if(state.currentSession.startTime) state.currentSession.endTime = Date.now();
         DB.sessions.push(state.currentSession);
         DB.sessions.sort((a,b)=> a.date===b.date ? (a.id<b.id?-1:1) : (a.date<b.date?-1:1));
         saveDB();
