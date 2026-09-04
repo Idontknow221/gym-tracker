@@ -1158,6 +1158,52 @@ async function saveDB(){
   if(FATAL) return;                     // 載入失敗時一律不寫入，避免覆蓋原始資料
   try{ await window.storage.set('kenny-db', JSON.stringify(DB)); }catch(e){}
 }
+
+// ============================================================
+// 訓練中草稿（Draft）—— 解決手機瀏覽器分頁被系統回收/重整導致
+// 進行中的訓練（含 startTime，用來算時長）整個消失的問題。
+// 只在「有進行中的訓練」時才寫，跟正式的 DB 完全分開存一個 key，
+// 不會混進已完成的訓練紀錄，也不影響 schema／migration。
+// ============================================================
+const DRAFT_KEY = 'kenny-draft-session';
+// 不防抖、直接寫——手機瀏覽器可能在你切出去的瞬間就把整個分頁記憶體清空，
+// 拖延寫入等於在賭系統不會在那零點幾秒內動手，賭輸了草稿就是舊的。
+// localStorage 寫入本身很快，這個資料量沒有防抖的必要。
+function saveDraft(){
+  if(!state.currentSession) return;
+  try{
+    window.storage.set(DRAFT_KEY, JSON.stringify({
+      currentSession: state.currentSession,
+      currentDay: state.currentDay,
+      exIndex: state.exIndex,
+      savedAt: Date.now()
+    }));
+  }catch(e){}
+}
+function clearDraft(){
+  try{ window.storage.delete(DRAFT_KEY); }catch(e){}
+}
+async function restoreDraftIfAny(){
+  let raw = null;
+  try{ const r = await window.storage.get(DRAFT_KEY); if(r && r.value) raw = r.value; }catch(e){ return; }
+  if(!raw) return;
+  let draft;
+  try{ draft = JSON.parse(raw); }catch(e){ return; }
+  if(!draft || !draft.currentSession || !draft.currentSession.exercises) return;
+  // 草稿存在的當下已經完成的組數，用來提示使用者到底救回了多少東西，
+  // 不是憑空恢復一個空白畫面讓人搞不清楚發生什麼事。
+  const doneCount = draft.currentSession.exercises.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0);
+  const savedAgo = draft.savedAt ? Math.max(0, Math.round((Date.now()-draft.savedAt)/60000)) : null;
+  const msg = '偵測到一次中斷的訓練（已完成 '+doneCount+' 組'+(savedAgo!==null?'，約 '+savedAgo+' 分鐘前中斷':'')+'）。要繼續這次訓練嗎？\n\n選「取消」會放棄這次沒存檔的紀錄。';
+  if(confirm(msg)){
+    state.currentSession = draft.currentSession;
+    state.currentDay = draft.currentDay;
+    state.exIndex = draft.exIndex || 0;
+    state.screen = 'today';
+  } else {
+    clearDraft();
+  }
+}
 function applyTheme(){ document.body.setAttribute('data-theme', DB.settings.theme||'light'); }
 function applyMode(){ PROGRAM = DB.settings.mode==='home' ? PROGRAM_HOME : PROGRAM_GYM; }
 
@@ -1379,6 +1425,7 @@ function render(){
   else if(state.screen==='more') app.innerHTML = renderMore();
   else if(state.screen==='reference') app.innerHTML = renderReference();
   bindEvents();
+  saveDraft();
 }
 
 // C1：Home 摸高卡片——沒測過寫「還沒測摸高」不是0；≥14天沒測寫「該測了」；
@@ -3048,6 +3095,7 @@ function bindEvents(){
           const doneCount = state.currentSession.exercises.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0);
           if(doneCount>0 && !confirm('已經記錄了 '+doneCount+' 組，離開會取消這次訓練（不會存檔），確定要離開嗎？')) return;
           state.currentSession = null;
+          clearDraft();
         }
         state.screen='home'; render();
       }
@@ -3113,6 +3161,7 @@ function bindEvents(){
         DB.sessions.push(state.currentSession);
         DB.sessions.sort((a,b)=> a.date===b.date ? (a.id<b.id?-1:1) : (a.date<b.date?-1:1));
         saveDB();
+        clearDraft();
         state.currentSession=null; state.screen='home'; render();
       }
       else if(act==='viewSession'){ state.viewingId = el.dataset.id; state.screen='sessionDetail'; render(); }
@@ -3352,7 +3401,12 @@ function updateTimerDisplay(){
 function fmtTime(s){ const m=Math.floor(s/60), sec=s%60; return (m<10?'0':'')+m+':'+(sec<10?'0':'')+sec; }
 function closeTimer(){ clearInterval(state.timerInterval); const o=document.getElementById('timerOverlay'); if(o) o.remove(); }
 
-loadDB().then(ok=>{ if(ok) render(); });
+// 分頁被切到背景／即將關閉的瞬間，強制存一次草稿——這是 iOS Safari 真的會
+// 隨時把背景分頁記憶體整個清掉的防線，不能只靠操作觸發的 render() 去存。
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') saveDraft(); });
+window.addEventListener('pagehide', saveDraft);
+
+loadDB().then(async ok=>{ if(ok){ await restoreDraftIfAny(); render(); } });
 </script>
 </body>
 </html>
