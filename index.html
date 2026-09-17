@@ -260,12 +260,49 @@ textarea{resize:vertical; min-height:76px; font-family:var(--sans); font-weight:
   border:1px solid var(--line); border-radius:22px; padding:6px;
   box-shadow:0 10px 34px rgba(0,0,0,.28); transition:opacity var(--ui) var(--e);}
 .navbar.dim{opacity:0; pointer-events:none;}
-.navitem{display:flex; flex-direction:column; align-items:center; gap:3px; width:60px;
+.navitem{display:flex; flex-direction:column; align-items:center; gap:3px; width:52px;
   padding:8px 0 7px; cursor:pointer; color:var(--faint); border-radius:16px;
   font-family:var(--mono); font-size:8.5px; letter-spacing:.08em;
   transition:color var(--micro) var(--e), background var(--micro) var(--e);}
 .navitem.active{color:var(--mark); background:var(--mark-soft);}
 .navicon{width:19px; height:19px; display:block;}
+
+/* ---------- 排球技術訓練模組 ---------- */
+.vb-card{background:var(--raise); border:1px solid var(--line2); border-radius:16px; padding:16px; margin-bottom:12px;}
+.vb-field{display:block; font-size:12px; color:var(--dust); font-weight:700; margin-bottom:5px;}
+.vb-seg{display:flex; background:var(--riser); border-radius:12px; padding:3px; gap:3px;}
+.vb-seg button{flex:1; border:none; background:transparent; color:var(--dust); padding:9px; border-radius:9px; font-weight:800; font-size:13px; font-family:inherit;}
+.vb-seg button.active{background:var(--mark); color:#0F1114;}
+.vb-daygrid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-top:8px;}
+.vb-daybtn{padding:10px 2px; border-radius:10px; background:var(--riser); border:1.5px solid transparent; text-align:center; cursor:pointer; color:var(--chalk);}
+.vb-daybtn .n{font-size:13px; font-weight:800;}
+.vb-daybtn.active{border-color:var(--mark); background:var(--mark-soft);}
+.vb-exrow{display:flex; gap:10px; padding:11px 0; border-bottom:1px solid var(--line2); align-items:flex-start;}
+.vb-exrow:last-child{border-bottom:none;}
+.vb-exname{font-weight:800; font-size:14.5px;}
+.vb-exname.done{color:var(--faint); text-decoration:line-through;}
+.vb-exdetail{font-size:12px; color:var(--dust); margin-top:3px; line-height:1.45;}
+.vb-checkbox{width:24px; height:24px; border-radius:7px; border:2px solid var(--faint); flex:none;
+  display:flex; align-items:center; justify-content:center; cursor:pointer; margin-top:1px;}
+.vb-checkbox.checked{background:var(--mark); border-color:var(--mark);}
+.vb-checkbox.checked::after{content:"✓"; color:#0F1114; font-weight:900; font-size:14px;}
+.vb-leveldots{display:flex; gap:9px; flex-wrap:wrap;}
+.vb-leveldot{width:36px; height:36px; border-radius:50%; background:var(--riser); border:2px solid var(--line);
+  display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12.5px; color:var(--dust); cursor:pointer;}
+.vb-leveldot.active{background:var(--mark); border-color:var(--mark); color:#0F1114;}
+.vb-leveldot.done{border-color:var(--good); color:var(--good);}
+.vb-banner{border-radius:14px; padding:12px 14px; font-size:13px; display:flex; gap:10px; align-items:flex-start; margin-bottom:12px;}
+.vb-banner.warn{background:rgba(255,107,90,.13); color:var(--chalk);}
+.vb-dotscale{display:flex; gap:9px;}
+.vb-dotscale .d{width:30px; height:30px; border-radius:50%; border:2px solid var(--line); display:flex; align-items:center;
+  justify-content:center; font-size:12px; font-weight:700; color:var(--dust); cursor:pointer;}
+.vb-dotscale .d.on{background:var(--mark); border-color:var(--mark); color:#0F1114;}
+.loggrid{width:100%; border-collapse:collapse; font-size:10.5px;}
+.loggrid th{color:var(--faint); font-weight:700; padding:4px 2px; text-align:center;}
+.loggrid td{text-align:center; padding:4px 2px; border-top:1px solid var(--line2);}
+.loggrid td.wk{text-align:left; font-weight:800; color:var(--chalk);}
+.loggrid .dot{width:15px; height:15px; border-radius:5px; border:1.5px solid var(--faint); display:inline-block;}
+.loggrid .dot.on{background:var(--good); border-color:var(--good);}
 
 /* ---------- 休息計時：環形 ---------- */
 .timer-overlay{position:fixed; inset:0; z-index:100; display:flex; flex-direction:column;
@@ -291,6 +328,22 @@ textarea{resize:vertical; min-height:76px; font-family:var(--sans); font-weight:
   *,*::before,*::after{animation-duration:.001ms !important; animation-iteration-count:1 !important;
     transition-duration:.001ms !important;}
 }
+
+/* ===== 加到主畫面提示 / 備份提醒 / 即時計時 / 連續週 ===== */
+.instbn,.nagbn{border-radius:var(--radius,4px);padding:13px 14px;margin:0 0 14px;
+  border:1px solid var(--accent);background:var(--accent-soft,rgba(127,127,127,.08));}
+.nagbn{border-color:var(--danger);background:rgba(200,80,60,.09);}
+.instbn .ib-t,.nagbn .ib-t{font-size:13px;font-weight:800;margin-bottom:4px;}
+.instbn .ib-t{color:var(--accent);} .nagbn .ib-t{color:var(--danger);}
+.instbn .ib-b,.nagbn .ib-b{font-size:12.5px;line-height:1.6;}
+.ib-x{margin-top:9px;background:none;border:0;padding:0;cursor:pointer;font-family:inherit;
+  font-size:11.5px;font-weight:700;color:var(--faint);border-bottom:1px dotted var(--faint);}
+.livebar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:10px;
+  background:var(--bg);border-bottom:2px solid var(--accent);padding:9px 2px;margin-bottom:12px;}
+.livebar .lt{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:800;}
+.livebar .lv{font-size:26px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums;font-family:var(--rounded,inherit);}
+.livebar .lm{margin-left:auto;font-size:11px;font-weight:700;color:var(--faint);text-align:right;line-height:1.35;}
+.livebar.hit .lv,.livebar.hit .lm{color:var(--accent);}
 </style>
 </head>
 <body>
@@ -303,6 +356,7 @@ textarea{resize:vertical; min-height:76px; font-family:var(--sans); font-weight:
   <div class="navitem" data-nav="history" role="button" aria-label="歷史紀錄"><svg class="navicon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>LOG</div>
   <div class="navitem" data-nav="progress" role="button" aria-label="進度"><svg class="navicon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16M7 15l3-4 3 2 4-6"/></svg>TREND</div>
   <div class="navitem" data-nav="more" role="button" aria-label="更多"><svg class="navicon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>SET</div>
+  <div class="navitem" data-nav="vb" role="button" aria-label="排球技術訓練"><svg class="navicon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3c3 3 3 15 0 18M3 12h18M5.5 6.5c3 2 10 2 13 0M5.5 17.5c3-2 10-2 13 0"/></svg>VB</div>
 </div>
 
 <script>
@@ -481,6 +535,24 @@ const EX_ZH = {
 function dn(n){ return EX_ZH[n] || n; }
 function enSub(n){ return EX_ZH[n] ? n : ''; }
 
+// ============================================================
+// 課表登錄表。要新增一套課表，只在這裡加一筆，其他畫面會自動跟上：
+//   myplan: {name:'我的課表', short:'MY', days:PROGRAM_MY, warmup:WARMUP_MY, mains:[...]}
+// days 的 key 就是 DAY 編號；warmup / mains 可以省略（省略就沒有熱身提示、沒有主課題曲線）。
+// 紀錄裡的 session.mode 存的就是這裡的 key，所以新增課表不會動到任何舊資料。
+// ============================================================
+const PROGRAMS = {
+  gym:  {name:'健身房', short:'GYM',  days:null, warmup:null, mains:null, subs:true},
+  home: {name:'居家',   short:'HOME', days:null, warmup:null, mains:null, subs:false}
+};
+function progDef(id){ return PROGRAMS[id] || PROGRAMS.gym; }
+function progName(id){ return progDef(id).name; }
+function progShort(id){ return progDef(id).short; }
+function progIds(){ return Object.keys(PROGRAMS); }
+// 這套課表要不要套用 GYM_SUBSTITUTE 的器材替代建議。新課表沒寫 subs 就當不套用——
+// 寧可少一個建議，也不要把健身房的替代動作硬套到對不上器材的課表上。
+function progSubs(id){ return progDef(id).subs === true; }
+
 let PROGRAM = PROGRAM_GYM;
 const GYM_MAIN = ["Back Squat","Bench Press","Trap-bar Deadlift","Standing OHP","RDL","Hip Thrust"];
 
@@ -516,17 +588,26 @@ const JUMP_PROGRESSION = [
 
 // 目前第幾週：從第一筆訓練紀錄的日期起算，純粹依據你自己的實際訓練歷史計算，
 // 不需要另外設定「開始日」，也不會因為缺練而暫停或跳週——就是單純的日曆週數。
+const CYCLE_WEEKS = 12;
+// 課表是 12 週一輪。跑完第 12 週不是「過期不能用」，而是進入下一輪從第 1 週重新算，
+// 跳躍課表也跟著回到第一階段——這在週期化訓練裡就是正常的下一個 block。
+// 舊版是 Math.min(week,12)，會永遠卡在「第 12 / 12 週」，跳躍階段也停在最後一階。
+// 設定裡可以按「開始新一輪」把起算日改成今天；不設就從第一筆紀錄連續往下算。
 function programWeekInfo(){
-  if(!DB.sessions.length) return {week:1, block:JUMP_PROGRESSION[0], startDate:null};
-  const firstDate = DB.sessions.map(s=>s.date).sort()[0];
-  const [y,m,d] = firstDate.split('-').map(Number);
+  const anchor = (DB.settings && DB.settings.cycleStart) || null;
+  const firstDate = DB.sessions.length ? DB.sessions.map(s=>s.date).sort()[0] : null;
+  const base = anchor || firstDate;
+  if(!base) return {week:1, cycle:1, totalWeeks:1, block:JUMP_PROGRESSION[0], startDate:null};
+  const [y,m,d] = base.split('-').map(Number);
   const start = new Date(y, m-1, d);
   const [ty,tm,td] = todayISO().split('-').map(Number);
   const today = new Date(ty, tm-1, td);
   const diffDays = Math.round((today - start) / 86400000);
-  const week = Math.min(Math.max(Math.floor(diffDays/7) + 1, 1), 12);
+  const totalWeeks = Math.max(Math.floor(diffDays/7) + 1, 1);
+  const cycle = Math.floor((totalWeeks - 1) / CYCLE_WEEKS) + 1;
+  const week = ((totalWeeks - 1) % CYCLE_WEEKS) + 1;   // 1..12 循環，永遠不會卡住
   const block = JUMP_PROGRESSION.find(b => week>=b.weeks[0] && week<=b.weeks[1]) || JUMP_PROGRESSION[JUMP_PROGRESSION.length-1];
-  return {week, block, startDate:firstDate};
+  return {week, cycle, totalWeeks, block, startDate:base};
 }
 
 // 摸高測試——PDF 第9頁明講「這是這份計畫成不成功的關鍵指標」：原地跳摸高 vs 助跑跳摸高的差距，
@@ -839,7 +920,7 @@ function jumpTestSummary(){
 }
 const HOME_MAIN = ["Bulgarian Split Squat","DB Floor Press","DB Deadlift","DB Shoulder Press"];
 
-let DB = {sessions:[], notes:[], bodyweight:[], bodyComp:[], jumpTests:[], motionTests:[], jumpMeasurements:[], fvProfiles:[], settings:{theme:"light", mode:"gym"}};
+let DB = {sessions:[], notes:[], bodyweight:[], bodyComp:[], jumpTests:[], motionTests:[], jumpMeasurements:[], fvProfiles:[], volleyball:{level:1, checkins:[], selftests:[], startDate:null}, settings:{theme:"light", mode:"gym", instDismissed:false, lastExportAt:null, cycleStart:null}};
 
 // 若不是在 Claude 對話框裡開啟（例如加到 iPhone 主畫面獨立執行），
 // window.storage 不存在，改用瀏覽器內建的 localStorage 當備援，行為對 App 其餘部分完全透明。
@@ -859,7 +940,7 @@ let state = {screen:"home", currentDay:null, currentSession:null, exIndex:0, tim
    weight / reps / rir / date / note / bodyweight。這條規則由
    「資料指紋」在程式層強制，不是靠自律。
    ============================================================ */
-const CURRENT_SCHEMA = 9;
+const CURRENT_SCHEMA = 10;
 
 /* 舊資料種子（SEED）。
    用途：把手機上舊版的資料直接烘進這個檔案，開啟就有，不用手動貼上匯入。
@@ -920,7 +1001,7 @@ const MIGRATIONS = [
       if(!Array.isArray(db.meta.migrations)) db.meta.migrations = [];
 
       if(db.settings.theme!=='light' && db.settings.theme!=='dark') db.settings.theme='light';
-      if(db.settings.mode!=='home' && db.settings.mode!=='gym') db.settings.mode='gym';
+      if(!PROGRAMS[db.settings.mode]) db.settings.mode='gym';
 
       db.sessions.forEach((s,i)=>{
         if(s.mode!=='home' && s.mode!=='gym') s.mode='gym';
@@ -1035,6 +1116,24 @@ const MIGRATIONS = [
         if(typeof s.endTime!=='number') s.endTime = null;
       });
       db.schemaVersion = 9;
+    }
+  },
+  {
+    // v10：居家排球技術訓練模組（獨立於重訓課表之外的第二種訓練類型）。
+    // 純附加：舊的重訓 session 一律補 kind:'lift'（不影響任何既有欄位的值），
+    // 新增 db.volleyball 儲存攻擊 Level、每週回報與每週自我測試——這些是
+    // 排球模組專屬的資料，跟 sessions/bodyweight 等既有陣列完全分開放，
+    // 不會被既有的重訓相關 reduce/filter 誤讀。
+    from:9, to:10, name:'add-volleyball-module', mutatesValues:false,
+    guard: db => db.schemaVersion===undefined || db.schemaVersion<10,
+    up: db => {
+      db.sessions.forEach(s=>{ if(s.kind!=='volleyball') s.kind = 'lift'; });
+      if(!db.volleyball || typeof db.volleyball!=='object') db.volleyball = {};
+      if(typeof db.volleyball.level!=='number') db.volleyball.level = 1;
+      if(!Array.isArray(db.volleyball.checkins)) db.volleyball.checkins = [];
+      if(!Array.isArray(db.volleyball.selftests)) db.volleyball.selftests = [];
+      if(typeof db.volleyball.startDate!=='string') db.volleyball.startDate = null;
+      db.schemaVersion = 10;
     }
   }
 ];
@@ -1204,10 +1303,146 @@ async function restoreDraftIfAny(){
     clearDraft();
   }
 }
-function applyTheme(){ document.body.setAttribute('data-theme', DB.settings.theme||'light'); }
-function applyMode(){ PROGRAM = DB.settings.mode==='home' ? PROGRAM_HOME : PROGRAM_GYM; }
+/* ============================================================
+   共用小工具（不綁任何 app 的資料結構，只吃「日期字串陣列」）
+   ============================================================ */
 
-function progFor(mode){ return mode==='home' ? PROGRAM_HOME : PROGRAM_GYM; }
+/* 本地時區的 YYYY-MM-DD。不能用 toISOString()，那是 UTC，
+   台灣時間半夜會算成前一天。 */
+function ymdLocal(d){
+  d = d || new Date();
+  const p = n => String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+/* 一週從星期一算起（台灣習慣），回傳該週週一的 YYYY-MM-DD */
+function weekStartOf(ymd){
+  const parts = String(ymd).split('-');
+  const d = new Date(Number(parts[0]), Number(parts[1])-1, Number(parts[2]));
+  const dow = (d.getDay() + 6) % 7;           // 週一=0
+  d.setDate(d.getDate() - dow);
+  return ymdLocal(d);
+}
+function fmtElapsed(ms){
+  const s = Math.max(0, Math.floor(ms/1000));
+  const m = Math.floor(s/60), ss = s%60;
+  return m + ':' + String(ss).padStart(2,'0');
+}
+
+/* 本週完成天數（同一天多筆算一天） */
+function weekProgress(dates, target){
+  const wk = weekStartOf(ymdLocal());
+  const days = new Set(dates.filter(d => weekStartOf(d) === wk));
+  return { done: days.size, target: target || 4 };
+}
+/* 連續有訓練的週數（含本週；本週還沒練就從上週往回算，
+   星期一才剛開始就被說「斷了」很沒道理）。 */
+function weekStreak(dates){
+  if(!dates || !dates.length) return 0;
+  const weeks = new Set(dates.map(weekStartOf));
+  const cur = weekStartOf(ymdLocal());
+  const back = n => {
+    const p = cur.split('-');
+    const d = new Date(Number(p[0]), Number(p[1])-1, Number(p[2]));
+    d.setDate(d.getDate() - 7*n);
+    return ymdLocal(d);
+  };
+  let start = weeks.has(cur) ? 0 : 1;
+  if(start === 1 && !weeks.has(back(1))) return 0;
+  let n = 0;
+  for(let i = start; i < 260; i++){
+    if(weeks.has(back(i))) n++; else break;
+  }
+  return n;
+}
+
+/* ---------- 是否已加到主畫面 ---------- */
+function isStandalone(){
+  return window.navigator.standalone === true
+      || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+}
+function deviceKind(){
+  const ua = navigator.userAgent || '';
+  if(/iPad|iPhone|iPod/.test(ua)) return 'ios';
+  if(/Android/.test(ua)) return 'android';
+  return 'desktop';
+}
+/* 用瀏覽器直接開的網頁，iOS 會在「7 天沒互動」後把 localStorage 整個清掉
+   （ITP 的 script-writable storage 上限），加到主畫面的 web app 不受這個限制。
+   所以這個提示不是美化，是避免紀錄整批消失。 */
+function installBannerHTML(dismissed){
+  if(isStandalone() || dismissed) return '';
+  const k = deviceKind();
+  const how = k === 'ios'
+    ? '在 Safari 按下方的「分享」→「加入主畫面」'
+    : (k === 'android'
+        ? '按瀏覽器右上角「⋮」→「加到主畫面」'
+        : '在手機上用瀏覽器打開這個網址，再加到主畫面');
+  const local = location.protocol === 'file:';
+  return `<div class="instbn">
+    <div class="ib-t">建議加到主畫面</div>
+    <div class="ib-b">${local
+      ? '這個檔案是用「本機檔案」開啟的，瀏覽器不一定會保留紀錄。把檔案放到網路空間（或請 Kenny 給你網址）再加到主畫面，紀錄才會穩定保存。'
+      : '直接用瀏覽器開，iPhone 可能在超過一週沒打開後自動清掉訓練紀錄。' + how + '，就不會被清掉，開啟也會是全螢幕。'}</div>
+    <button class="ib-x" data-instdismiss="1">知道了，不再顯示</button>
+  </div>`;
+}
+
+/* ---------- 備份提醒 ---------- */
+function backupNagHTML(lastExportAt, sessionCount){
+  if(sessionCount < 3) return '';                     // 還沒什麼資料就別囉嗦
+  const DAY = 86400000;
+  if(lastExportAt && (Date.now() - lastExportAt) < 21*DAY) return '';
+  const days = lastExportAt ? Math.floor((Date.now()-lastExportAt)/DAY) : null;
+  return `<div class="nagbn">
+    <div class="ib-t">建議備份一次紀錄</div>
+    <div class="ib-b">${days!==null
+      ? '距離上次備份已經 '+days+' 天。'
+      : '目前還沒備份過。'}紀錄只存在這台裝置上，換手機或清瀏覽器資料就會不見。到「說明」頁把資料匯出存起來就好。</div>
+  </div>`;
+}
+
+/* ============ 訓練中即時計時 ============ */
+let _liveTick = null;
+function liveBarHTML(){
+  const sess = state.currentSession;
+  if(!sess || typeof sess.startTime !== 'number') return '';   // 補登沒有 startTime，不顯示
+  const ms = Date.now() - sess.startTime, min = Math.floor(ms/60000), hit = min>=30;
+  return '<div class="livebar'+(hit?' hit':'')+'" id="liveBar">'
+    + '<div><div class="lt">本次訓練</div><div class="lv" id="liveNum">'+fmtElapsed(ms)+'</div></div>'
+    + '<div class="lm" id="liveMsg">'+(hit?'已達 30 分鐘<br>可作為運動紀錄':'再 '+(30-min)+' 分鐘<br>達 30 分鐘門檻')+'</div></div>';
+}
+/* 只換數字節點，不整頁 render()——否則每秒會把輸入框焦點和游標清掉 */
+function startLiveTick(){
+  stopLiveTick();
+  const sess = state.currentSession;
+  if(!sess || typeof sess.startTime !== 'number') return;
+  _liveTick = setInterval(()=>{
+    const bar = document.getElementById('liveBar');
+    if(!bar){ stopLiveTick(); return; }
+    const ms = Date.now() - sess.startTime, min = Math.floor(ms/60000);
+    const n = document.getElementById('liveNum'); if(n) n.textContent = fmtElapsed(ms);
+    const m = document.getElementById('liveMsg');
+    if(m) m.innerHTML = min>=30 ? '已達 30 分鐘<br>可作為運動紀錄' : '再 '+(30-min)+' 分鐘<br>達 30 分鐘門檻';
+    if(min>=30) bar.classList.add('hit');
+  },1000);
+}
+function stopLiveTick(){ if(_liveTick){ clearInterval(_liveTick); _liveTick=null; } }
+function kennyStreak(){ return weekStreak(DB.sessions.map(s=>s.date)); }
+
+function applyTheme(){ document.body.setAttribute('data-theme', DB.settings.theme||'light'); }
+// 這些常數宣告在登錄表後面，所以在這裡才把內容接上（宣告提升不會幫我們搬值）
+PROGRAMS.gym.days  = PROGRAM_GYM;  PROGRAMS.gym.warmup  = WARMUP_GYM;  PROGRAMS.gym.mains  = GYM_MAIN;
+PROGRAMS.home.days = PROGRAM_HOME; PROGRAMS.home.warmup = WARMUP_HOME; PROGRAMS.home.mains = HOME_MAIN;
+
+function applyMode(){ PROGRAM = progFor(DB.settings.mode); }
+
+// 空的 days（例如課表編輯到一半）也要回退，否則首頁會白畫面。
+function progFor(mode){
+  const d = progDef(mode).days;
+  return (d && Object.keys(d).length) ? d : PROGRAM_GYM;
+}
+function progWarmup(mode){ return progDef(mode).warmup || {}; }
+function progMains(mode){ return progDef(mode).mains || []; }
 function safeDay(mode,day){ const p=progFor(mode); return p[day] || PROGRAM_GYM[day]; }
 function fmtDate(d){
   // A1修正：不能用 new Date("YYYY-MM-DD")，那是 UTC 零點，時區非UTC+0時顯示會差一天。
@@ -1231,11 +1466,22 @@ function localISO(d){
 function todayISO(){ return localISO(new Date()); }
 function weekdayStr(){ return ["週日","週一","週二","週三","週四","週五","週六"][new Date().getDay()]; }
 
+// 下一個建議的訓練日。原本寫死「1..4 輪流」，一旦課表的 DAY 編號不是 1–4
+// （例如新增一套只有 DAY 1–3 的課表），PROGRAM[sug] 會是 undefined，首頁直接白畫面。
+// 改成一律以「目前課表實際有的 DAY」為依據輪替，並且只採計同一套課表的紀錄——
+// 用居家課表練的那幾天，不該拿去決定健身房課表接下來要練哪一天。
+// 另外 Number() 是必要的：如果紀錄裡的 day 是字串，last+1 會變成字串相接（"1"+1="11"）。
 function nextSuggestedDay(){
-  const mainDays = DB.sessions.filter(s=>s.day>=1 && s.day<=4);
-  if(mainDays.length===0) return 1;
-  const last = mainDays[mainDays.length-1].day;
-  return last>=4 ? 1 : last+1;
+  const prg = progFor(DB.settings.mode);
+  const days = Object.keys(prg).map(Number).filter(n=>!isNaN(n)).sort((a,b)=>a-b);
+  if(!days.length) return 1;
+  const mainDays = days.filter(d => (prg[d].exercises||[]).length > 0);
+  const pool = mainDays.length ? mainDays : days;
+  const mine = DB.sessions.filter(s => s.mode === DB.settings.mode && pool.indexOf(Number(s.day)) !== -1);
+  if(!mine.length) return pool[0];
+  const last = Number(mine[mine.length-1].day);
+  const idx = pool.indexOf(last);
+  return (idx === -1 || idx === pool.length-1) ? pool[0] : pool[idx+1];
 }
 
 // 取某動作最近 N 次已完成訓練的紀錄，由近到遠排序。用來判斷「連續沒進步」，
@@ -1424,8 +1670,15 @@ function render(){
   else if(state.screen==='progress') app.innerHTML = renderProgress();
   else if(state.screen==='more') app.innerHTML = renderMore();
   else if(state.screen==='reference') app.innerHTML = renderReference();
+  else if(state.screen==='vb') app.innerHTML = renderVb();
+  else if(state.screen==='vbActive') app.innerHTML = renderVbActive();
+  else if(state.screen==='vbComplete') app.innerHTML = renderVbComplete();
   bindEvents();
+  const _ix = document.querySelector('[data-instdismiss]');
+  if(_ix) _ix.addEventListener('click', ()=>{ DB.settings.instDismissed = true; saveDB(); render(); });
+  if(state.screen==='today' && state.currentSession) startLiveTick(); else stopLiveTick();
   saveDraft();
+  saveVbDraft();
 }
 
 // C1：Home 摸高卡片——沒測過寫「還沒測摸高」不是0；≥14天沒測寫「該測了」；
@@ -1464,9 +1717,10 @@ function homeJumpTestSection(){
 }
 
 function renderHome(){
-  const sug = nextSuggestedDay();
+  let sug = nextSuggestedDay();
+  // 最後一道保險：任何情況下 PROGRAM[sug] 都必須存在，否則首頁會白畫面。
+  if(!PROGRAM[sug]) sug = Object.keys(PROGRAM)[0];
   const last = DB.sessions.length ? DB.sessions[DB.sessions.length-1] : null;
-  const isHome = DB.settings.mode==='home';
   const now = new Date();
   // 本週（週一起算）的必練完成度 —— Rise Meter 的來源
   const dow = (now.getDay()+6)%7;
@@ -1481,7 +1735,9 @@ function renderHome(){
   const totalVol = DB.sessions.reduce((a,s)=>a+s.exercises.reduce((b,e)=>
     b + (e.def.weighted ? e.sets.filter(x=>x.done).reduce((c,x)=>c+(x.weight||0)*(x.reps||0),0) : 0),0),0);
 
-  return `
+  return installBannerHTML(DB.settings.instDismissed)
+    + backupNagHTML(DB.settings.lastExportAt, DB.sessions.length)
+    + `
     <section class="hero">
       <div class="hero-grid">
         <div class="meter">
@@ -1491,12 +1747,13 @@ function renderHome(){
           <div class="meter-fill" style="height:${pct}%"></div>
         </div>
         <div>
-          <div class="label">${todayISO().replace(/-/g,'.')} · ${weekdayStr()} · ${isHome?'居家':'健身房'}</div>
+          <div class="label">${todayISO().replace(/-/g,'.')} · ${weekdayStr()} · ${progName(DB.settings.mode)}</div>
           <h1 class="hero-day">${PROGRAM[sug].name.replace(' — ','<br>')}</h1>
           <div class="hero-sub">
             <span class="hero-stat"><b>${PROGRAM[sug].exercises.length}</b><span class="label">動作</span></span>
             <span class="hero-stat"><b>${PROGRAM[sug].exercises.reduce((a,e)=>a+e.sets,0)}</b><span class="label">組</span></span>
             <span class="hero-stat"><b>${weekMain}<span style="color:var(--faint)">/4</span></b><span class="label">本週</span></span>
+            <span class="hero-stat"><b>${kennyStreak()}</b><span class="label">連續週</span></span>
           </div>
         </div>
       </div>
@@ -1524,8 +1781,8 @@ function renderHome(){
           <div class="tl-item" data-action="viewSession" data-id="${s.id}" style="border-bottom:1px solid var(--line2)">
             <div class="tl-date" style="${d.today?'color:var(--mark)':''}">週${weekdayLabel}</div>
             <div class="tl-body">
-              <div class="tl-name">${progFor(s.mode)[s.day].name}${s.backfill?' <span class="tag tag-mid" style="font-size:9.5px; vertical-align:middle">補登</span>':''}</div>
-              <div class="tl-meta">${s.exercises.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0)} SETS · ${s.mode==='home'?'HOME':'GYM'}</div>
+              <div class="tl-name">${sessionLabel(s)}${s.backfill?' <span class="tag tag-mid" style="font-size:9.5px; vertical-align:middle">補登</span>':''}</div>
+              <div class="tl-meta">${sessionMeta(s)}</div>
             </div>
             <span style="color:var(--faint)">›</span>
           </div>`).join('');
@@ -1548,7 +1805,7 @@ function renderHome(){
         <div class="tl-date">${fmtDate(last.date)}</div>
         <div class="tl-body">
           <div class="tl-name">${progFor(last.mode)[last.day].name}</div>
-          <div class="tl-meta">${last.exercises.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0)} SETS · ${last.mode==='home'?'HOME':'GYM'}</div>
+          <div class="tl-meta">${last.exercises.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0)} SETS · ${progShort(last.mode)}</div>
         </div>
         <span style="color:var(--faint)">›</span>
       </div>
@@ -1572,7 +1829,7 @@ function renderWorkoutPicker(){
     </div>`;
   return `
     <div class="pad"><h1>選一個 Day</h1>
-    <p class="muted">${DB.settings.mode==='home'?'居家版':'健身房版'}課表・點進去可以先看動作內容，不會直接開始</p></div>
+    <p class="muted">${progName(DB.settings.mode)}課表・點進去可以先看動作內容，不會直接開始</p></div>
     <div class="tl" style="padding-left:0">${[1,2,3,4,5].map(d=>row(d,false)).join('')}</div>
     <h3>補登過去的訓練</h3>
     <p class="muted" style="font-size:12.5px; margin-bottom:6px">事後補打的紀錄，不會跳出休息計時器，日期可以自己選</p>
@@ -1582,9 +1839,9 @@ function renderWorkoutPicker(){
 
 function renderPreview(){
   const day = state.previewDay;
-  const isHome = DB.settings.mode==='home';
+  const useSubs = progSubs(DB.settings.mode);
   const prog = PROGRAM[day];
-  const warmup = (isHome?WARMUP_HOME:WARMUP_GYM)[day];
+  const warmup = progWarmup(DB.settings.mode)[day];
   return `
     <div class="topbar"><div class="back" data-action="backWorkout">‹</div>
       <div style="flex:1; min-width:0"><div class="label">查看內容・還沒開始</div>
@@ -1600,10 +1857,10 @@ function renderPreview(){
     <div class="tl" style="padding-left:0">
       ${prog.exercises.map(def=>`
         <div style="padding:13px 0; border-bottom:1px solid var(--line2)">
-          <div style="font-weight:700; font-size:15px">${dn(def.n)}${(!isHome && GYM_SUBSTITUTE[def.n] && findSubstituteDef(GYM_SUBSTITUTE[def.n].sub))?' <span class="tag tag-mid" style="font-size:10px; vertical-align:middle">可替代</span>':''}</div>
+          <div style="font-weight:700; font-size:15px">${dn(def.n)}${(useSubs && GYM_SUBSTITUTE[def.n] && findSubstituteDef(GYM_SUBSTITUTE[def.n].sub))?' <span class="tag tag-mid" style="font-size:10px; vertical-align:middle">可替代</span>':''}</div>
           <div class="rung-meta" style="margin-top:3px">${def.sets}×${def.reps} · RIR ${def.rir}${enSub(def.n)?' · '+enSub(def.n):''}</div>
           ${def.cue ? `<p class="muted" style="font-size:12.5px; margin-top:5px; line-height:1.5">${escapeHtml(def.cue)}</p>` : ''}
-          ${(!isHome && GYM_SUBSTITUTE[def.n] && findSubstituteDef(GYM_SUBSTITUTE[def.n].sub)) ? `<p class="muted" style="font-size:11.5px; margin-top:4px">器材沒有可換：${dn(GYM_SUBSTITUTE[def.n].sub)}（開始訓練後可以在動作頁面直接換）</p>` : ''}
+          ${(useSubs && GYM_SUBSTITUTE[def.n] && findSubstituteDef(GYM_SUBSTITUTE[def.n].sub)) ? `<p class="muted" style="font-size:11.5px; margin-top:4px">器材沒有可換：${dn(GYM_SUBSTITUTE[def.n].sub)}（開始訓練後可以在動作頁面直接換）</p>` : ''}
         </div>`).join('')}
     </div>
 
@@ -1619,7 +1876,7 @@ function renderToday(){
   const doneSets = sess.exercises.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0);
   const firstIncomplete = sess.exercises.findIndex(ex=>ex.sets.some(s=>!s.done));
   const pct = totalSets ? doneSets/totalSets*100 : 0;
-  return `
+  return liveBarHTML() + `
     <div class="topbar"><div class="back" data-action="backHome">‹</div>
       <div style="flex:1; min-width:0"><div class="label">${sess.backfill?'補登中':'進行中'}</div>
       <h1 style="font-size:22px; overflow-wrap:break-word">${PROGRAM[day].name}</h1></div></div>
@@ -1633,10 +1890,10 @@ function renderToday(){
       </div>
     </div>` : ''}
 
-    ${(!sess.backfill && (sess.mode==='home'?WARMUP_HOME:WARMUP_GYM)[day]) ? `
+    ${(!sess.backfill && progWarmup(sess.mode)[day]) ? `
     <div class="note" style="margin-top:14px">
       <div class="label">熱身</div>
-      <p style="font-size:13.5px; line-height:1.6; margin:6px 0 0">${(sess.mode==='home'?WARMUP_HOME:WARMUP_GYM)[day]}</p>
+      <p style="font-size:13.5px; line-height:1.6; margin:6px 0 0">${progWarmup(sess.mode)[day]}</p>
     </div>` : ''}
 
     <div class="util-row" style="border-bottom:none; padding-top:14px">
@@ -2063,15 +2320,15 @@ function renderHistory(){
       html += `<div class="tl-month">${mo.replace('-',' / ')}</div>`;
       lastMonth = mo;
     }
-    const sets = s.exercises.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0);
-    const vol = s.exercises.reduce((a,e)=>a+(e.def.weighted?e.sets.filter(x=>x.done).reduce((b,x)=>b+(x.weight||0)*(x.reps||0),0):0),0);
+    const sets = s.kind==='volleyball' ? 0 : s.exercises.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0);
+    const vol = s.kind==='volleyball' ? 0 : s.exercises.reduce((a,e)=>a+(e.def.weighted?e.sets.filter(x=>x.done).reduce((b,x)=>b+(x.weight||0)*(x.reps||0),0):0),0);
     html += `
       <div class="tl-item" data-action="viewSession" data-id="${s.id}">
         <div class="tl-date">${dateLabel(s.date)}</div>
         <div class="tl-body">
-          <div class="tl-name">${progFor(s.mode)[s.day].name.split(' — ')[1]||progFor(s.mode)[s.day].name}
+          <div class="tl-name">${s.kind==='volleyball' ? sessionLabel(s) : (progFor(s.mode)[s.day].name.split(' — ')[1]||progFor(s.mode)[s.day].name)}
             ${s.backfill?'<span class="tag tag-mid" style="margin-left:6px">補登</span>':''}</div>
-          <div class="tl-meta">${sets} SETS${vol>0?' · '+Math.round(vol)+' KG':''} · ${s.mode==='home'?'HOME':'GYM'}</div>
+          <div class="tl-meta">${s.kind==='volleyball' ? sessionMeta(s) : (sets+' SETS'+(vol>0?' · '+Math.round(vol)+' KG':'')+' · '+progShort(s.mode))}</div>
         </div>
         <span style="color:var(--faint)">›</span>
       </div>`;
@@ -2088,12 +2345,13 @@ function sessionDurationMin(s){
 function renderSessionDetail(){
   const s = DB.sessions.find(x=>x.id===state.viewingId);
   if(!s) return `<div class="empty"><p class="muted">找不到這筆紀錄</p></div>`;
+  if(s.kind==='volleyball') return renderVbSessionDetail(s);
   const sets = s.exercises.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0);
   const vol = s.exercises.reduce((a,e)=>a+(e.def.weighted?e.sets.filter(x=>x.done).reduce((b,x)=>b+(x.weight||0)*(x.reps||0),0):0),0);
   const durMin = sessionDurationMin(s);
   return `
     <div class="topbar"><div class="back" data-action="backHistory">‹</div>
-      <div style="flex:1; min-width:0"><div class="label">${s.date.replace(/-/g,'.')}${durMin?' · '+durMin+' 分鐘':''} · ${s.mode==='home'?'居家':'健身房'}${s.backfill?' · 補登':''}</div>
+      <div style="flex:1; min-width:0"><div class="label">${s.date.replace(/-/g,'.')}${durMin?' · '+durMin+' 分鐘':''} · ${progName(s.mode)}${s.backfill?' · 補登':''}</div>
       <h1 style="font-size:22px; overflow-wrap:break-word">${progFor(s.mode)[s.day].name}</h1></div></div>
     ${durMin ? `
     <div style="display:flex; align-items:baseline; gap:8px; padding:14px 0 4px">
@@ -2299,7 +2557,7 @@ function muscleVolumeCard(){
 
 // ===== Insights B：主力動作趨勢總覽（以第一筆為基準的相對變化%，同張視覺放在一起看）=====
 function mainLiftsSummaryCard(){
-  const mains = DB.settings.mode==='home' ? HOME_MAIN : GYM_MAIN;
+  const mains = progMains(DB.settings.mode);
   const rows = mains.map(name=>{
     const trend = DB.sessions.map(s=>{
       const ex = s.exercises.find(e=>e.def.n===name);
@@ -2412,8 +2670,9 @@ function renderPhaseCard(){
       <div class="hero-grid">
         <div class="meter"><div class="meter-fill" style="height:${pct}%"></div></div>
         <div>
-          <div class="label">12 週訓練週期（日曆週）・對應第 ${info.block.weeks[0]}–${info.block.weeks[1]} 週跳躍階段</div>
+          <div class="label">12 週一輪（日曆週）・對應第 ${info.block.weeks[0]}–${info.block.weeks[1]} 週跳躍階段</div>
           <div class="figure f-big" style="margin-top:6px">第 ${info.week}<span style="font-size:19px; color:var(--faint)"> / 12 週</span></div>
+          <div class="label" style="margin-top:4px">第 ${info.cycle} 輪・累計第 ${info.totalWeeks} 週${info.cycle>1?'（跑完一輪自動進下一輪，不會停用）':''}</div>
         </div>
       </div>
       <div style="height:18px"></div>
@@ -2513,7 +2772,7 @@ function jumpConsistencyCard(){
 
 // ===== PR 時間軸：只標「真的突破」的那幾個點，不是連續趨勢 =====
 function prTimelineEvents(){
-  const mains = DB.settings.mode==='home' ? HOME_MAIN : GYM_MAIN;
+  const mains = progMains(DB.settings.mode);
   const events = [];
   mains.forEach(name=>{
     let best = -Infinity;
@@ -2615,7 +2874,7 @@ function renderProgress(){
 
   // 第三層（標題「力量與身體」，預設摺疊）——沿用既有 toggleTrend 的點擊展開模式，不做新框架
   const tier3Open = !!state.tier3Open;
-  const mainLifts = DB.settings.mode==='home' ? HOME_MAIN : GYM_MAIN;
+  const mainLifts = progMains(DB.settings.mode);
   const allNames = new Set();
   DB.sessions.forEach(s=>s.exercises.forEach(e=>{ if(e.def.weighted && e.sets.some(x=>x.done)) allNames.add(e.def.n); }));
   const others = [...allNames].filter(n=>!mainLifts.includes(n));
@@ -2627,7 +2886,7 @@ function renderProgress(){
     ? `<div class="empty"><div class="figure">—</div>
        <p class="muted" style="margin-top:10px">動作曲線需要至少兩次同一個動作的紀錄才畫得出來。</p></div>`
     : `<div class="pad" style="padding-top:10px">
-        <p class="muted">${DB.settings.mode==='home'?'居家版':'健身房版'}主課題。曲線是推估 1RM，全部來自你實際記錄的組數。</p>
+        <p class="muted">${progName(DB.settings.mode)}主課題。曲線是推估 1RM，全部來自你實際記錄的組數。</p>
       </div>${exerciseHtml}
       <p class="muted" style="font-size:11px; line-height:1.6; padding:12px 16px 8px">
         推估 1RM 用 Epley 公式計算（重量 ×(1+次數/30)）——選這個公式是因為在你這份課表常見的 3–15 下訓練範圍內誤差可接受、不需要額外校正參數；次數越高（15下以上）誤差會變大。這是估算值，不是真的測出來的 1RM，僅供參考長期趨勢。
@@ -2665,7 +2924,7 @@ const DELOAD_SIGNS = [
 // 但那個合併權重（這項佔多少%）本身沒有文獻依據，寫出來就是假裝有科學根據的偽精確。
 // 使用者自己看這幾項證據、自己判斷比較誠實。
 function checkDeloadSigns(){
-  const mains = DB.settings.mode==='home' ? HOME_MAIN : GYM_MAIN;
+  const mains = progMains(DB.settings.mode);
   // PHASE 4：只算真的 WEIGHT_PLATEAU（卡住），不算 REP_PLATEAU（次數其實在進步，
   // 只是還沒到範圍上限）——後者不該被當成「卡關證據」列進來，那會誤導判斷。
   const plateauCount = mains.filter(n=>{
@@ -2933,17 +3192,37 @@ function renderMore(){
 
 function renderSettingsGeneral(){
   const dark = DB.settings.theme==='dark';
-  const isHome = DB.settings.mode==='home';
   const mig = (DB.meta&&DB.meta.migrations&&DB.meta.migrations.length) ? DB.meta.migrations[DB.meta.migrations.length-1] : null;
   return `
     <div class="topbar"><div class="back" data-action="backMore">‹</div>
       <div><div class="label">設定</div><h1 style="font-size:22px">一般設定</h1></div></div>
     <div class="util" style="margin-top:14px">
-      <div class="util-row"><span>訓練場地</span>
-        <div style="display:flex; align-items:center; gap:10px">
-          <span class="k">${isHome?'居家':'健身房'}</span>
-          <div class="toggle ${isHome?'on':''}" data-action="toggleMode"></div>
-        </div></div>
+      <div class="util-row" style="display:block">
+        <div style="display:flex; justify-content:space-between; align-items:baseline">
+          <span>使用中的課表</span>
+          <span class="k">${progName(DB.settings.mode)}</span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:9px">
+          ${progIds().map(id=>`
+            <button class="btn btn-sm ${id===DB.settings.mode?'btn-primary':''}"
+              data-action="pickProgram" data-pid="${id}"
+              ${id===DB.settings.mode?'disabled':''}>${PROGRAMS[id].name}</button>`).join('')}
+        </div>
+        <p class="muted" style="font-size:11px; margin-top:8px">
+          切換課表不會刪除任何紀錄——每筆紀錄都記著當時用的是哪套課表，切回來就看得到。
+          要新增課表，在程式碼的 PROGRAMS 登錄表加一筆即可。
+        </p>
+      </div>
+      <div class="util-row" style="display:block">
+        <div style="display:flex; justify-content:space-between; align-items:baseline">
+          <span>訓練週期</span>
+          <span class="k">第 ${programWeekInfo().cycle} 輪・第 ${programWeekInfo().week} / 12 週</span>
+        </div>
+        <button class="btn btn-sm" data-action="newCycle" style="width:100%; margin-top:9px">開始新一輪（從今天算第 1 週）</button>
+        <p class="muted" style="font-size:11px; margin-top:8px">
+          跑完 12 週會自動接下一輪，不用手動按。這個按鈕是給你想提前重新開始一輪時用的，紀錄不會被刪。
+        </p>
+      </div>
       <div class="util-row"><span>深色模式</span>
         <div class="toggle ${dark?'on':''}" data-action="toggleTheme"></div></div>
     </div>
@@ -3168,6 +3447,74 @@ function bindEvents(){
       else if(act==='backHistory'){ state.screen='history'; render(); }
       else if(act==='backMore'){ state.screen='more'; render(); }
       else if(act==='openReference'){ state.screen='reference'; render(); }
+      else if(act==='vbSub'){ state.vbSub = el.dataset.sub; render(); }
+      else if(act==='vbPickDay'){ state.vbDay = Number(el.dataset.day); render(); }
+      else if(act==='vbPickVersion'){ state.vbVersion = Number(el.dataset.v); render(); }
+      else if(act==='vbStart'){
+        const day = state.vbDay || vbNextSuggestedDay();
+        const version = state.vbVersion || 10;
+        const lvl = vbEffectiveLevel(day);
+        state.vbSession = {
+          id:'VB_'+Date.now(), kind:'volleyball', mode:'volleyball', date:todayISO(), day, vbVersion:version, vbLevel:lvl,
+          vbExercises: vbBuildExercises(day, version), exercises:[], startTime: Date.now(), endTime:null,
+          note:'', vbFeel:null, backfill:false
+        };
+        state.screen='vbActive'; render();
+      }
+      else if(act==='vbToggle'){
+        const i = Number(el.dataset.i);
+        state.vbSession.vbExercises[i].done = !state.vbSession.vbExercises[i].done;
+        if(navigator.vibrate) navigator.vibrate(12);
+        render();
+      }
+      else if(act==='vbCancelActive'){
+        if(confirm('要放棄這次進行中的排球訓練嗎？未儲存的內容會消失。')){
+          state.vbSession=null; clearVbDraft(); state.screen='vb'; state.vbSub='today';
+        }
+        render();
+      }
+      else if(act==='vbFinish'){ state.screen='vbComplete'; render(); }
+      else if(act==='vbFeel'){ state.vbFeel = el.dataset.f; render(); }
+      else if(act==='vbSaveComplete'){
+        const noteEl = document.getElementById('vbNote');
+        state.vbSession.note = noteEl ? noteEl.value : '';
+        state.vbSession.vbFeel = state.vbFeel || null;
+        state.vbSession.endTime = Date.now();
+        if(!DB.volleyball.startDate) DB.volleyball.startDate = state.vbSession.date;
+        DB.sessions.push(state.vbSession);
+        DB.sessions.sort((a,b)=> a.date===b.date ? (a.id<b.id?-1:1) : (a.date<b.date?-1:1));
+        saveDB(); clearVbDraft();
+        state.vbSession=null; state.vbFeel=null; state.vbDay=null;
+        state.screen='vb'; state.vbSub='today'; render();
+      }
+      else if(act==='vbSetLevel'){ DB.volleyball.level = Number(el.dataset.lvl); saveDB(); render(); }
+      else if(act==='vbSaveCheckin'){
+        const val = id => { const e=document.getElementById(id); return e? e.value : ''; };
+        const energyEl = document.querySelector('#vbCiEnergy .d.on');
+        const sorenessEl = document.querySelector('#vbCiSoreness .d.on');
+        DB.volleyball.checkins.push({
+          date: todayISO(),
+          done: val('vbCiDone')!=='' ? Number(val('vbCiDone')) : null,
+          sleep: val('vbCiSleep')!=='' ? Number(val('vbCiSleep')) : null,
+          weight: val('vbCiWeight')!=='' ? Number(val('vbCiWeight')) : null,
+          energy: energyEl ? Number(energyEl.dataset.val) : null,
+          soreness: sorenessEl ? Number(sorenessEl.dataset.val) : null,
+          note: val('vbCiNote')
+        });
+        saveDB(); render();
+      }
+      else if(act==='vbSaveSelftest'){
+        const val = id => { const e=document.getElementById(id); return e? e.value : ''; };
+        const attackEl = document.querySelector('#vbTAttack .d.on');
+        DB.volleyball.selftests.push({
+          date: todayISO(),
+          rotation: val('vbTRot')!=='' ? Number(val('vbTRot')) : 0,
+          lowhand: val('vbTLow')!=='' ? Number(val('vbTLow')) : 0,
+          judge: val('vbTJudge')!=='' ? Number(val('vbTJudge')) : 0,
+          attackSelf: attackEl ? Number(attackEl.dataset.val) : 0
+        });
+        saveDB(); render();
+      }
       else if(act==='openJumpImport'){ state.jumpImportPreview=null; state.screen='jumpImport'; render(); }
       else if(act==='backJumpImport'){ state.jumpImportPreview=null; state.screen='jumpCategory'; render(); }
       else if(act==='parseJumpCsv'){
@@ -3240,10 +3587,19 @@ function bindEvents(){
         state.fvDraft = null; saveDB(); render();
       }
       else if(act==='toggleTheme'){ DB.settings.theme = DB.settings.theme==='dark'?'light':'dark'; applyTheme(); saveDB(); render(); }
-      else if(act==='toggleMode'){
-        if(state.currentSession){ alert('請先完成或離開目前訓練，再切換健身房／居家模式'); return; }
-        DB.settings.mode = DB.settings.mode==='home'?'gym':'home';
+      else if(act==='pickProgram'){
+        const pid = el.dataset.pid;
+        if(!PROGRAMS[pid]) return;
+        if(pid === DB.settings.mode) return;
+        if(state.currentSession){ alert('請先完成或離開目前訓練，再切換課表'); return; }
+        DB.settings.mode = pid;
         applyMode(); saveDB(); render();
+      }
+      else if(act==='newCycle'){
+        if(state.currentSession){ alert('請先完成或離開目前訓練，再開始新一輪'); return; }
+        if(!confirm('要從今天開始算新一輪的第 1 週嗎？\n\n訓練紀錄不會被刪除，只是週數重新從 1 開始算。')) return;
+        DB.settings.cycleStart = todayISO();
+        saveDB(); render();
       }
       else if(act==='toggleDeload'){ state.currentSession.deload = !state.currentSession.deload; render(); }
       else if(act==='setEnergy'){
@@ -3279,7 +3635,10 @@ function bindEvents(){
         if(!standing || !approach){ alert('原地跳跟助跑跳的高度都要填'); return; }
         DB.jumpTests.push({date:todayISO(), standing, approach}); saveDB(); render();
       }
-      else if(act==='exportData'){ document.getElementById('exportBox').value = JSON.stringify(DB, null, 2); }
+      else if(act==='exportData'){
+        document.getElementById('exportBox').value = JSON.stringify(DB, null, 2);
+        DB.settings.lastExportAt = Date.now(); saveDB();   // 備份提醒靠這個判斷多久沒備份
+      }
       else if(act==='importData'){
         try{
           const parsed = JSON.parse(document.getElementById('importBox').value);
@@ -3318,7 +3677,7 @@ function bindEvents(){
       }
       else if(act==='resetData'){
         if(confirm('確定要清除所有訓練紀錄嗎？此動作無法復原。')){
-          DB = {schemaVersion:CURRENT_SCHEMA, sessions:[], notes:[], bodyweight:[], bodyComp:[], jumpTests:[], motionTests:[], jumpMeasurements:[], fvProfiles:[], settings:DB.settings, meta:DB.meta||{}};
+          DB = {schemaVersion:CURRENT_SCHEMA, sessions:[], notes:[], bodyweight:[], bodyComp:[], jumpTests:[], motionTests:[], jumpMeasurements:[], fvProfiles:[], volleyball:{level:1, checkins:[], selftests:[], startDate:null}, settings:DB.settings, meta:DB.meta||{}};
           saveDB(); render();
         }
       }
@@ -3342,10 +3701,18 @@ function bindEvents(){
     state.currentSession.checkin = state.currentSession.checkin || {energy:null, soreness:null, sleepHours:null};
     state.currentSession.checkin.sleepHours = (sleepInput.value!=='' && !isNaN(v)) ? v : null;
   };
+  document.querySelectorAll('.vb-dotscale .d').forEach(el=>{
+    el.onclick = ()=>{
+      el.parentElement.querySelectorAll('.d').forEach(d=>d.classList.remove('on'));
+      el.classList.add('on');
+    };
+  });
   document.querySelectorAll('.navitem').forEach(el=>{
     el.onclick = ()=>{
       const nav = el.dataset.nav;
       if(nav==='workout' && state.currentSession){ state.screen='today'; }
+      else if(nav==='vb' && state.vbSession){ state.screen='vbActive'; }
+      else if(nav==='vb'){ state.screen='vb'; if(!state.vbSub) state.vbSub='today'; }
       else { state.screen = nav; }
       render();
     };
@@ -3401,12 +3768,430 @@ function updateTimerDisplay(){
 function fmtTime(s){ const m=Math.floor(s/60), sec=s%60; return (m<10?'0':'')+m+':'+(sec<10?'0':'')+sec; }
 function closeTimer(){ clearInterval(state.timerInterval); const o=document.getElementById('timerOverlay'); if(o) o.remove(); }
 
+
+/* ============================================================
+   居家排球技術訓練模組（VOLLEYBALL）
+   跟重訓課表（GYM/HOME）是完全獨立的第二種訓練類型，不共用
+   PROGRAM_GYM/PROGRAM_HOME 或 suggestNextLoad 這些「有重量」的邏輯。
+   資料存在 DB.volleyball（等級／每週回報／每週自我測試）跟
+   DB.sessions 裡 kind==='volleyball' 的紀錄（跟重訓紀錄同一個陣列、
+   同一條時間軸，只是欄位形狀不同）。
+   ============================================================ */
+
+const VB_LEVELS = {
+  1:{name:'無球攻擊手型', reps:'8 次', sets:'2 組', rest:'20 秒',
+     detail:'站姿引臂向後上方→手臂加速向前上方帶起，手掌張開如同拍向高處→到達最高點停頓，感受手掌手指手腕相對位置→緩慢放鬆收回'},
+  2:{name:'靜態球面包覆感', reps:'10 次', sets:'2 組', rest:'20 秒',
+     detail:'另一手托球於胸口高度，攻擊手手掌輕觸球面最高點，手指順著球面自然貼合形成短暫包覆（不是抓握），停留約 1 秒後放鬆離開'},
+  3:{name:'低速攻擊接觸', reps:'8 次', sets:'2 組', rest:'20–30 秒',
+     detail:'另一手將球輕拋或扶穩於身體前方約 30–50cm、低於肩膀高度，攻擊手掌接觸＋手指包覆，用非常小的力量輕輕前送，送球後立即收手'},
+  4:{name:'低速旋轉控制', reps:'10 次一組', sets:'2 組', rest:'30 秒',
+     detail:'另一手輕拋球，低高度慢速，手掌先接觸球的中後方，手指隨即沿球面向前包覆，同時手腕做極小幅度前捲動作讓球以低速前旋方式離手，觀察旋轉方向是否一致'},
+  5:{name:'軟墊攻擊接觸', reps:'8 次', sets:'2 組', rest:'30 秒',
+     detail:'在床、厚棉被或厚瑜伽墊上方進行，另一手將球舉高至胸口～肩膀之間，攻擊手以手掌＋手指完整接觸球面，力量比 Level 3 稍大，讓球落回軟墊，不追求速度與距離'},
+  6:{name:'半揮臂攻擊', reps:'6 次', sets:'2 組', rest:'30–40 秒',
+     detail:'站姿，不跳不助跑，引臂至肩後方，手臂以中等速度（全力的 40–60%）向前上方加速，手掌接觸球、手指隨即包覆、前臂自然旋轉，接觸後放鬆收手讓球落於軟墊或地墊'}
+};
+
+const VB_DAYS = {
+  1:{focus:'球感＋低手', drills10:[
+      {skill:'球感', name:'三點拋接球感', min:2, detail:'胸前／頭頂／身側拋接，雙手交替，動作放慢'},
+      {skill:'低手', name:'低手自拋自接', min:2, detail:'前臂平台自拋自接，膝蓋微彎緩衝'},
+      {skill:'攻擊手感', min:3, attack:true},
+      {skill:'移動', name:'先到位，再接球', min:2, detail:'輕拋至左前／右前／前／後，碎步移動後完成接球'},
+      {skill:'收操', name:'收操＋感受記錄', min:1, detail:'甩手放鬆，記下今日觸球與攻擊手感'}
+    ]},
+  2:{focus:'球感＋高手', drills10:[
+      {skill:'球感', name:'三點拋接球感', min:2, detail:'胸前／頭頂／身側拋接，動作放慢'},
+      {skill:'高手', name:'高手托住—放開', min:2, detail:'額頭上方托住—放開，手指張開分散力量'},
+      {skill:'攻擊手感', min:3, attack:true},
+      {skill:'判斷', name:'高低球判斷', min:2, detail:'隨機高度自拋，肩上用高手、胸下用低手'},
+      {skill:'收操', name:'收操＋感受記錄', min:1, detail:'甩手放鬆，記下今日觸球與攻擊手感'}
+    ]},
+  3:{focus:'攻擊包球手感', drills10:[
+      {skill:'球感', name:'三點拋接球感', min:2, detail:'胸前／頭頂／身側拋接，動作放慢'},
+      {skill:'攻擊手感', min:5, attack:true},
+      {skill:'判斷', name:'高低球判斷', min:2, detail:'隨機高度自拋，練習判斷—移動—選技術'},
+      {skill:'收操', name:'收操＋感受記錄', min:1, detail:'甩手放鬆，記下今日攻擊手感'}
+    ]},
+  4:{focus:'低手＋移動', drills10:[
+      {skill:'球感', name:'三點拋接球感', min:2, detail:'胸前／頭頂／身側拋接，動作放慢'},
+      {skill:'低手', name:'低手自拋自接', min:2, detail:'前臂平台自拋自接，膝蓋微彎緩衝'},
+      {skill:'移動', name:'先到位，再接球', min:2, detail:'輕拋至左前／右前／前／後，碎步移動後完成接球'},
+      {skill:'攻擊手感', min:3, attack:true},
+      {skill:'收操', name:'收操＋感受記錄', min:1, detail:'甩手放鬆，記下今日觸球與攻擊手感'}
+    ]},
+  5:{focus:'攻擊手感＋旋轉控制', forceLevel:4, drills10:[
+      {skill:'球感', name:'三點拋接球感', min:2, detail:'胸前／頭頂／身側拋接，動作放慢'},
+      {skill:'攻擊手感', min:5, attack:true, note:'固定練 Level 4 低速旋轉控制；若還沒到 L4，先做目前的 Level'},
+      {skill:'判斷', name:'高低球判斷', min:2, detail:'隨機高度自拋，練習判斷—移動—選技術'},
+      {skill:'收操', name:'收操＋感受記錄', min:1, detail:'甩手放鬆，記下今日攻擊手感'}
+    ]},
+  6:{focus:'高低球判斷＋攻擊整合', drills10:[
+      {skill:'球感', name:'三點拋接球感', min:2, detail:'胸前／頭頂／身側拋接，動作放慢'},
+      {skill:'判斷', name:'高低球判斷', min:2, detail:'隨機高度自拋，練習判斷—移動—選技術'},
+      {skill:'攻擊手感', min:3, attack:true},
+      {skill:'移動', name:'先到位，再接球', min:2, detail:'輕拋至左前／右前／前／後，碎步移動後完成接球'},
+      {skill:'收操', name:'收操＋感受記錄', min:1, detail:'甩手放鬆，記下今日觸球與攻擊手感'}
+    ]},
+  7:{focus:'輕量球感＋自我檢測', isTestDay:true, drills10:[
+      {skill:'球感', name:'三點拋接球感', min:3, detail:'胸前／頭頂／身側拋接，動作放慢'},
+      {skill:'高手', name:'高手托住—放開', min:2, detail:'額頭上方托住—放開'},
+      {skill:'低手', name:'低手自拋自接', min:2, detail:'前臂平台自拋自接'},
+      {skill:'攻擊手感', min:2, attack:true, note:'今日輕量進行'},
+      {skill:'收操', name:'收操＋感受記錄', min:1, detail:'甩手放鬆；別忘了到「回報」分頁做這週的自我測試'}
+    ]}
+};
+
+const VB_DRILLS15 = [
+  {skill:'球感', name:'三點拋接球感', min:2, detail:'胸前／頭頂／身側拋接，加入繞身控制'},
+  {skill:'高手', name:'高手托住—放開', min:2, detail:'額頭上方托住—放開，手指張開分散力量'},
+  {skill:'低手', name:'低手自拋自接', min:2, detail:'前臂平台自拋自接，靠腿部延伸送球'},
+  {skill:'攻擊手感', min:4, attack:true},
+  {skill:'移動', name:'先到位，再接球', min:2, detail:'輕拋至左前／右前，碎步移動後完成接球'},
+  {skill:'判斷', name:'高低球判斷', min:2, detail:'隨機高度自拋，練習「判斷—移動—選技術」連續反應'},
+  {skill:'收操', name:'收操＋記錄', min:1, detail:'甩手放鬆，填寫今日訓練紀錄卡'}
+];
+
+// 目前攻擊 Level 由使用者在「等級」頁自己手動調整——這裡只負責 Day 5
+// 「固定練旋轉控制」的例外：還沒練到 L4 就先做目前的 Level，不硬跳級。
+function vbEffectiveLevel(day){
+  const cur = (DB.volleyball && DB.volleyball.level) || 1;
+  const d = VB_DAYS[day];
+  if(d && d.forceLevel) return cur >= d.forceLevel ? d.forceLevel : cur;
+  return cur;
+}
+function vbBuildExercises(day, version){
+  const base = version===15 ? VB_DRILLS15 : VB_DAYS[day].drills10;
+  const lvl = vbEffectiveLevel(day);
+  const L = VB_LEVELS[lvl];
+  return base.map((it,i)=>{
+    if(it.attack){
+      return {id:'x'+i, skill:it.skill, name:'L'+lvl+'｜'+L.name,
+        detail:L.detail+'（'+L.reps+' × '+L.sets+'，休息 '+L.rest+'）'+(it.note?'　'+it.note:''),
+        min:it.min, done:false, attack:true, level:lvl};
+    }
+    return {id:'x'+i, skill:it.skill, name:it.name, detail:it.detail, min:it.min, done:false, attack:false};
+  });
+}
+function vbNextSuggestedDay(){
+  const vs = DB.sessions.filter(s=>s.kind==='volleyball').sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0));
+  if(!vs.length) return 1;
+  const last = vs[vs.length-1];
+  return last.day>=7 ? 1 : last.day+1;
+}
+function vbWeekNumber(dateISO){
+  if(!DB.volleyball.startDate) return 1;
+  const [sy,sm,sd] = DB.volleyball.startDate.split('-').map(Number);
+  const [dy,dm,dd] = dateISO.split('-').map(Number);
+  const days = Math.floor((new Date(dy,dm-1,dd) - new Date(sy,sm-1,sd)) / 86400000);
+  return Math.max(1, Math.min(20, Math.floor(days/7)+1));
+}
+// 這個 App 從不自動幫使用者做決定——這裡只回傳「符合了哪些條件」的文字清單，
+// 用來在畫面上顯示提醒，升不升級／要不要排輕量週永遠由使用者自己按。
+function vbDeloadFlags(){
+  const tests = (DB.volleyball.selftests||[]).slice().sort((a,b)=>a.date<b.date?-1:1);
+  const checkins = (DB.volleyball.checkins||[]).slice().sort((a,b)=>a.date<b.date?-1:1);
+  const flags = [];
+  if(tests.length>=2){
+    const last2 = tests.slice(-2);
+    if(last2.every(t=>Number(t.attackSelf)<=2)) flags.push('攻擊包球自評連續 2 次 ≤ 2 分');
+    const score = t=> (Number(t.rotation)||0)+(Number(t.lowhand)||0)+(Number(t.judge)||0);
+    if(score(last2[1]) < score(last2[0])) flags.push('自我測試分數比上次下滑');
+  }
+  if(checkins.length){
+    const c = checkins[checkins.length-1];
+    if(Number(c.soreness)>=4) flags.push('最近一次回報痠痛自評偏高（≥4）');
+    if(Number(c.energy) && Number(c.energy)<=2) flags.push('最近一次回報精力自評偏低（≤2）');
+  }
+  const vs = DB.sessions.filter(s=>s.kind==='volleyball');
+  if(vs.length){
+    const lastDate = vs.map(s=>s.date).sort().reverse()[0];
+    const gapDays = Math.floor((new Date(todayISO())-new Date(lastDate))/86400000);
+    if(gapDays>=10) flags.push('已經超過 10 天沒有排球訓練紀錄');
+  }
+  return flags;
+}
+function vbLastN(n){
+  return DB.sessions.filter(s=>s.kind==='volleyball').sort((a,b)=>a.date<b.date?-1:1).slice(-n);
+}
+// 統一的「這筆紀錄要顯示什麼名字／副標」——同時給重訓跟排球用，
+// 這樣既有的三處（Home 本週／History 時間軸／SessionDetail）只要呼叫這個，
+// 就不會因為 s.mode==='volleyball' 去查 PROGRAM_GYM/HOME 而整頁掛掉。
+function sessionLabel(s){
+  if(s.kind==='volleyball'){
+    const d = VB_DAYS[s.day];
+    return '🏐 '+(d?d.focus:'排球技術')+'（'+(s.vbVersion||10)+' 分鐘）';
+  }
+  return progFor(s.mode)[s.day].name;
+}
+function sessionMeta(s){
+  if(s.kind==='volleyball'){
+    const ex = s.vbExercises||[];
+    const done = ex.filter(x=>x.done).length;
+    return done+'/'+ex.length+' 項 · VOLLEYBALL · L'+(s.vbLevel||1);
+  }
+  const sets = s.exercises.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0);
+  return sets+' SETS · '+progShort(s.mode);
+}
+
+/* ---------------- render: 排球 hub（今天／等級／紀錄表／回報／說明）---------------- */
+function renderVb(){
+  const sub = state.vbSub || 'today';
+  const tabs = [['today','今天'],['level','等級'],['log','紀錄表'],['checkin','回報'],['guide','說明']];
+  const tabHtml = `<div class="vb-seg">${tabs.map(t=>
+    `<button data-action="vbSub" data-sub="${t[0]}" class="${sub===t[0]?'active':''}">${t[1]}</button>`).join('')}</div>`;
+  let body = '';
+  if(sub==='today') body = renderVbToday();
+  else if(sub==='level') body = renderVbLevel();
+  else if(sub==='log') body = renderVbLog();
+  else if(sub==='checkin') body = renderVbCheckin();
+  else body = renderVbGuide();
+  return `<div class="pad"><h1>🏐 排球技術訓練</h1><p class="muted">居家低噪音排球技術訓練計畫 · 20 週</p></div>
+    <div class="pad" style="padding-top:0">${tabHtml}</div>
+    <div class="pad" style="padding-top:12px">${body}</div>`;
+}
+function renderVbToday(){
+  const flags = vbDeloadFlags();
+  const day = state.vbDay || vbNextSuggestedDay();
+  const version = state.vbVersion || 10;
+  const d = VB_DAYS[day];
+  const lvl = vbEffectiveLevel(day);
+  const list = vbBuildExercises(day, version);
+  const totalMin = list.reduce((a,x)=>a+x.min,0);
+  return `
+    ${flags.length ? `<div class="vb-banner warn">⚠ <div><b>建議看一下要不要排輕量週</b><br>${flags.map(f=>'· '+f).join('<br>')}<br><span class="muted" style="font-size:11.5px">這只是提醒，App 不會自動幫你改課表——判斷方式見「說明」分頁。</span></div></div>` : ''}
+    <div class="vb-card">
+      <div class="tag">選 DAY（建議：DAY ${vbNextSuggestedDay()}）</div>
+      <div class="vb-daygrid">${[1,2,3,4,5,6,7].map(n=>`
+        <div class="vb-daybtn ${day===n?'active':''}" data-action="vbPickDay" data-day="${n}">
+          <div class="n">D${n}</div>
+        </div>`).join('')}</div>
+      <div class="muted" style="font-size:12.5px; margin-top:8px">${d.focus}</div>
+    </div>
+    <div class="vb-card">
+      <div class="tag">選版本</div>
+      <div class="vb-seg" style="margin-top:6px">
+        <button data-action="vbPickVersion" data-v="10" class="${version===10?'active':''}">10 分鐘</button>
+        <button data-action="vbPickVersion" data-v="15" class="${version===15?'active':''}">15 分鐘</button>
+      </div>
+    </div>
+    <div class="vb-card">
+      <div class="row between"><div class="tag">今天要做</div><span class="muted" style="font-size:12px">共 ${totalMin} 分鐘 · 目前 L${lvl}</span></div>
+      ${list.map(x=>`
+        <div class="vb-exrow">
+          <div style="width:8px"></div>
+          <div style="flex:1">
+            <div class="vb-exname">${x.name} <span class="muted" style="font-size:11px">${x.min}′</span></div>
+            <div class="vb-exdetail">${x.detail}</div>
+          </div>
+        </div>`).join('')}
+    </div>
+    <button class="btn btn-primary" data-action="vbStart">開始這次訓練</button>
+  `;
+}
+function renderVbLevel(){
+  const lvl = DB.volleyball.level || 1;
+  return `
+    <div class="vb-card">
+      <div class="tag">目前攻擊 LEVEL</div>
+      <div class="vb-leveldots" style="margin-top:10px">
+        ${[1,2,3,4,5,6].map(n=>`<div class="vb-leveldot ${n===lvl?'active':(n<lvl?'done':'')}" data-action="vbSetLevel" data-lvl="${n}">L${n}</div>`).join('')}
+      </div>
+      <p class="muted" style="font-size:12.5px; margin-top:10px">點一個等級就切過去，App 不會自動幫你升級——進階／降階規則見「說明」分頁，什麼時候要跳全部由你自己判斷。</p>
+    </div>
+    <div class="vb-card">
+      <div class="tag">L${lvl}｜${VB_LEVELS[lvl].name}</div>
+      <p style="font-size:13.5px; margin-top:6px">${VB_LEVELS[lvl].detail}</p>
+      <div class="flow" style="margin-top:8px">
+        <div class="chip"><span class="label">次數</span><b>${VB_LEVELS[lvl].reps}</b></div>
+        <div class="chip"><span class="label">組數</span><b>${VB_LEVELS[lvl].sets}</b></div>
+        <div class="chip"><span class="label">休息</span><b>${VB_LEVELS[lvl].rest}</b></div>
+      </div>
+    </div>`;
+}
+function renderVbLog(){
+  const sessions = DB.sessions.filter(s=>s.kind==='volleyball');
+  if(!sessions.length){
+    return `<div class="empty">還沒有排球訓練紀錄。<br>到「今天」分頁開始第一次訓練，這裡就會自動長出 20 週紀錄表。</div>`;
+  }
+  if(!DB.volleyball.startDate) DB.volleyball.startDate = sessions.map(s=>s.date).sort()[0];
+  const byWeekDay = {};
+  sessions.forEach(s=>{
+    const wk = vbWeekNumber(s.date);
+    byWeekDay[wk] = byWeekDay[wk] || {};
+    byWeekDay[wk][s.day] = true;
+  });
+  let rows = '';
+  for(let w=1; w<=20; w++){
+    const marks = byWeekDay[w] || {};
+    rows += `<tr><td class="wk">W${String(w).padStart(2,'0')}</td>${[1,2,3,4,5,6,7].map(d=>
+      `<td><span class="dot ${marks[d]?'on':''}"></span></td>`).join('')}</tr>`;
+  }
+  return `
+    <div class="vb-card" style="overflow-x:auto">
+      <table class="loggrid"><thead><tr><th style="text-align:left">WEEK</th>${[1,2,3,4,5,6,7].map(d=>`<th>D${d}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody></table>
+    </div>
+    <p class="muted" style="font-size:11.5px">開始日：${DB.volleyball.startDate}（依第一次排球訓練紀錄自動決定）· 共 ${sessions.length} 次訓練</p>`;
+}
+function renderVbCheckin(){
+  const checkins = (DB.volleyball.checkins||[]).slice().sort((a,b)=>a.date<b.date?-1:1).reverse();
+  const tests = (DB.volleyball.selftests||[]).slice().sort((a,b)=>a.date<b.date?-1:1).reverse();
+  return `
+    <div class="vb-card">
+      <div class="tag">每週回報</div>
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px">
+        <div><label class="vb-field">本週完成次數 / 7</label><input type="number" id="vbCiDone" min="0" max="7" placeholder="例如 5"></div>
+        <div><label class="vb-field">平均睡眠（小時）</label><input type="number" id="vbCiSleep" step="0.5" placeholder="例如 7"></div>
+        <div><label class="vb-field">體重 kg（非必要）</label><input type="number" id="vbCiWeight" step="0.1" placeholder=""></div>
+        <div><label class="vb-field">精力自評 1–5</label><div class="vb-dotscale" id="vbCiEnergy" data-field="energy">${[1,2,3,4,5].map(n=>`<div class="d" data-val="${n}">${n}</div>`).join('')}</div></div>
+        <div><label class="vb-field">痠痛自評 1–5（5＝明顯痠痛）</label><div class="vb-dotscale" id="vbCiSoreness" data-field="soreness">${[1,2,3,4,5].map(n=>`<div class="d" data-val="${n}">${n}</div>`).join('')}</div></div>
+        <div><label class="vb-field">備註</label><textarea id="vbCiNote" placeholder="本週卡關／備註"></textarea></div>
+        <button class="btn btn-primary" data-action="vbSaveCheckin">儲存本週回報</button>
+      </div>
+    </div>
+    <div class="vb-card">
+      <div class="tag">每週自我測試</div>
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px">
+        <div><label class="vb-field">攻擊接觸中，成功產生目標旋轉幾次 / 10</label><input type="number" id="vbTRot" min="0" max="10"></div>
+        <div><label class="vb-field">低手接球中，球路穩定幾次 / 10</label><input type="number" id="vbTLow" min="0" max="10"></div>
+        <div><label class="vb-field">高低球判斷，判斷正確幾次 / 10</label><input type="number" id="vbTJudge" min="0" max="10"></div>
+        <div><label class="vb-field">攻擊包球自評 1–5</label><div class="vb-dotscale" id="vbTAttack" data-field="attackSelf">${[1,2,3,4,5].map(n=>`<div class="d" data-val="${n}">${n}</div>`).join('')}</div></div>
+        <button class="btn btn-primary" data-action="vbSaveSelftest">儲存本次測試</button>
+      </div>
+    </div>
+    ${checkins.length ? `<div class="vb-card"><div class="tag">回報紀錄</div>${checkins.slice(0,6).map(c=>
+      `<div style="padding:8px 0; border-top:1px solid var(--line2); font-size:12.5px">
+        <b>${c.date}</b> · 完成 ${c.done??'—'}/7 · 睡眠 ${c.sleep??'—'}h · 精力 ${c.energy??'—'} · 痠痛 ${c.soreness??'—'}
+        ${c.note?`<div class="muted" style="margin-top:2px">${escapeHtml(c.note)}</div>`:''}
+      </div>`).join('')}</div>` : ''}
+    ${tests.length ? `<div class="vb-card"><div class="tag">自我測試紀錄</div>${tests.slice(0,6).map(t=>
+      `<div style="padding:8px 0; border-top:1px solid var(--line2); font-size:12.5px">
+        <b>${t.date}</b> · 旋轉 ${t.rotation}/10 · 低手 ${t.lowhand}/10 · 判斷 ${t.judge}/10 · 攻擊自評 ${t.attackSelf}/5
+      </div>`).join('')}</div>` : ''}
+  `;
+}
+function renderVbGuide(){
+  return `
+    <div class="vb-card">
+      <div class="tag">進度規則</div>
+      <ol style="margin:8px 0 0 18px; font-size:13px; line-height:1.9">
+        <li>同一次訓練中，當天所有動作都能穩定完成、動作品質良好 → 可視為當次「達標」</li>
+        <li>每週自我測試中，同一項目連續 2 週達到 8/10 以上 → 可以考慮進階到下一個 Level</li>
+        <li>攻擊手感每個 Level 至少練滿 2 週才進階，即使表現已達標，避免動作定型不足</li>
+        <li>表現退步，或自我測試連續 2 週低於 5/10 → 不進階，原 Level 多練一週</li>
+        <li>出現疼痛 → 立即降階或暫停該動作，等疼痛消除後再重新評估</li>
+        <li>每週固定同一天做自我測試與回報，是判斷進不進階的依據，不是憑感覺</li>
+      </ol>
+    </div>
+    <div class="vb-card">
+      <div class="tag">卡關／該不該 Deload</div>
+      <p style="font-size:13px; margin-top:6px">符合以下任兩項以上，建議排一個輕量週（全部動作降一個 Level，或只做地基動作，暫停攻擊模組進階）：</p>
+      <ul style="margin:6px 0 0 18px; font-size:13px; line-height:1.9">
+        <li>連續 2 週自我測試分數下滑</li>
+        <li>攻擊包球自評連續 2 週 ≤ 2 分</li>
+        <li>明顯疲勞、注意力難以集中</li>
+        <li>手腕／手指／手肘出現超過訓練後 24 小時的痠痛</li>
+        <li>連續錯過 3 次以上排定的訓練</li>
+      </ul>
+    </div>
+    <div class="vb-card">
+      <div class="tag">7 天循環</div>
+      ${[1,2,3,4,5,6,7].map(n=>`<div style="padding:6px 0; font-size:13px"><b>DAY ${n}</b> · ${VB_DAYS[n].focus}</div>`).join('')}
+    </div>`;
+}
+
+/* ---------------- render: 進行中訓練 ---------------- */
+function renderVbActive(){
+  const s = state.vbSession;
+  const doneN = s.vbExercises.filter(x=>x.done).length;
+  return `
+    <div class="topbar"><div class="back" data-action="vbCancelActive">‹</div>
+      <div style="flex:1"><div class="label">DAY ${s.day} · ${s.vbVersion} 分鐘版</div>
+      <h1 style="font-size:20px">${VB_DAYS[s.day].focus}</h1></div></div>
+    <div class="pad">
+      <p class="muted" style="font-size:12.5px">完成 ${doneN}/${s.vbExercises.length} 項</p>
+      <div class="vb-card">
+        ${s.vbExercises.map((x,i)=>`
+          <div class="vb-exrow">
+            <div class="vb-checkbox ${x.done?'checked':''}" data-action="vbToggle" data-i="${i}"></div>
+            <div style="flex:1">
+              <div class="vb-exname ${x.done?'done':''}">${x.name} <span class="muted" style="font-size:11px">${x.min}′</span></div>
+              <div class="vb-exdetail">${x.detail}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+      <button class="btn btn-primary" data-action="vbFinish">完成訓練</button>
+    </div>`;
+}
+function renderVbComplete(){
+  const s = state.vbSession;
+  return `<div class="pad"><h1>訓練完成</h1>
+    <p class="muted">DAY ${s.day} · ${VB_DAYS[s.day].focus} · ${s.vbVersion} 分鐘版 · L${s.vbLevel}</p></div>
+    <div class="pad">
+      <label class="vb-field">今日感受</label>
+      <div class="vb-seg" style="margin-bottom:12px">
+        <button data-action="vbFeel" data-f="輕鬆" class="${state.vbFeel==='輕鬆'?'active':''}">輕鬆</button>
+        <button data-action="vbFeel" data-f="正常" class="${state.vbFeel==='正常'?'active':''}">正常</button>
+        <button data-action="vbFeel" data-f="困難" class="${state.vbFeel==='困難'?'active':''}">困難</button>
+      </div>
+      <label class="vb-field">備註</label>
+      <textarea id="vbNote" placeholder="今天的觸球感、攻擊手感⋯"></textarea>
+      <div style="height:14px"></div>
+      <button class="btn btn-primary" data-action="vbSaveComplete">儲存這次紀錄</button>
+    </div>`;
+}
+
+function renderVbSessionDetail(s){
+  const durMin = sessionDurationMin(s);
+  const ex = s.vbExercises||[];
+  return `
+    <div class="topbar"><div class="back" data-action="backHistory">‹</div>
+      <div style="flex:1; min-width:0"><div class="label">${s.date.replace(/-/g,'.')}${durMin?' · '+durMin+' 分鐘':''} · 排球技術${s.backfill?' · 補登':''}</div>
+      <h1 style="font-size:22px; overflow-wrap:break-word">${sessionLabel(s)}</h1></div></div>
+    <div class="readout">
+      <div><span class="label">DAY</span><b>${s.day}</b></div>
+      <div><span class="label">攻擊 LEVEL</span><b>L${s.vbLevel||1}</b></div>
+      <div><span class="label">完成</span><b>${ex.filter(x=>x.done).length}/${ex.length}</b></div>
+    </div>
+    ${s.vbFeel?`<div class="tag tag-mid" style="margin-top:8px">今日感受：${s.vbFeel}</div>`:''}
+    <h3>動作清單</h3>
+    ${ex.map(x=>`
+      <div style="padding:10px 0; border-bottom:1px solid var(--line2); opacity:${x.done?1:.5}">
+        <div style="font-weight:700; font-size:14px">${x.done?'✓ ':'— '}${x.name}</div>
+        <div class="muted" style="font-size:12px; margin-top:2px">${x.detail}</div>
+      </div>`).join('')}
+    ${s.note ? `<h3>訓練筆記</h3><div class="note"><p style="font-size:14px; margin:0">${escapeHtml(s.note)}</p></div>` : ''}
+    <div style="height:20px"></div>`;
+}
+
+/* ---------------- draft（跟重訓那組完全平行、獨立存，互不影響）---------------- */
+const VB_DRAFT_KEY = 'kenny-vb-draft';
+function saveVbDraft(){
+  if(!state.vbSession) return;
+  try{ window.storage.set(VB_DRAFT_KEY, JSON.stringify({vbSession:state.vbSession, savedAt:Date.now()})); }catch(e){}
+}
+function clearVbDraft(){ try{ window.storage.delete(VB_DRAFT_KEY); }catch(e){} }
+async function restoreVbDraftIfAny(){
+  let raw=null;
+  try{ const r=await window.storage.get(VB_DRAFT_KEY); if(r && r.value) raw=r.value; }catch(e){ return; }
+  if(!raw) return;
+  let draft; try{ draft=JSON.parse(raw); }catch(e){ return; }
+  if(!draft || !draft.vbSession || !draft.vbSession.vbExercises) return;
+  const doneN = draft.vbSession.vbExercises.filter(x=>x.done).length;
+  const agoMin = draft.savedAt ? Math.max(0, Math.round((Date.now()-draft.savedAt)/60000)) : null;
+  const msg = '偵測到一次中斷的排球訓練（已完成 '+doneN+' 項'+(agoMin!==null?'，約 '+agoMin+' 分鐘前中斷':'')+'）。要繼續嗎？\\n\\n選「取消」會放棄這次沒存檔的紀錄。';
+  if(confirm(msg)){ state.vbSession = draft.vbSession; state.screen = 'vbActive'; }
+  else clearVbDraft();
+}
+
 // 分頁被切到背景／即將關閉的瞬間，強制存一次草稿——這是 iOS Safari 真的會
 // 隨時把背景分頁記憶體整個清掉的防線，不能只靠操作觸發的 render() 去存。
-document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') saveDraft(); });
-window.addEventListener('pagehide', saveDraft);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden'){ saveDraft(); saveVbDraft(); } });
+window.addEventListener('pagehide', ()=>{ saveDraft(); saveVbDraft(); });
 
-loadDB().then(async ok=>{ if(ok){ await restoreDraftIfAny(); render(); } });
+loadDB().then(async ok=>{ if(ok){ await restoreDraftIfAny(); await restoreVbDraftIfAny(); render(); } });
 </script>
 </body>
 </html>
