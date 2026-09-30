@@ -304,6 +304,51 @@ textarea{resize:vertical; min-height:76px; font-family:var(--sans); font-weight:
 .loggrid .dot{width:15px; height:15px; border-radius:5px; border:1.5px solid var(--faint); display:inline-block;}
 .loggrid .dot.on{background:var(--good); border-color:var(--good);}
 
+/* ---------- 技術示意圖（扣球動作） ---------- */
+.tech-btn{display:inline-flex; align-items:center; gap:5px; margin-top:6px; padding:6px 10px; border-radius:9px;
+  border:1px solid var(--mark-line); background:var(--mark-soft); color:var(--mark); font-size:11.5px; font-weight:700; cursor:pointer;}
+.tech-overlay{position:fixed; inset:0; z-index:110; background:rgba(0,0,0,.6); display:flex; align-items:flex-end; justify-content:center;}
+[data-theme="light"] .tech-overlay{background:rgba(18,20,26,.4);}
+.tech-sheet{width:100%; max-width:520px; max-height:86vh; overflow-y:auto; background:var(--raise);
+  border-radius:20px 20px 0 0; padding:20px 20px calc(20px + env(safe-area-inset-bottom)); animation:sheetup .28s var(--e);}
+@keyframes sheetup{from{transform:translateY(24px); opacity:0;} to{transform:none; opacity:1;}}
+.tech-pose{width:120px; height:120px; margin:0 auto 10px; background:var(--riser); border-radius:16px;
+  display:flex; align-items:center; justify-content:center;}
+.tech-pose svg{width:104px; height:104px;}
+.techfig{stroke:var(--chalk); stroke-width:6; stroke-linecap:round; fill:none;}
+.techfig .dot{fill:var(--mark); stroke:none;}
+.techfig .dot2{stroke:var(--mark); stroke-width:5; fill:none;}
+.techfig .ball{fill:var(--mark); stroke:none;}
+.techfig .arc{stroke:var(--mark); stroke-width:3; stroke-dasharray:4 3; fill:none;}
+.techfig .foot{fill:var(--chalk); stroke:none;}
+.techfig .ground{stroke:var(--line); stroke-width:3;}
+.techfig .net{stroke:var(--line); stroke-width:3;}
+.techfig .lbl{font-size:16px; fill:var(--dust); stroke:none; font-weight:700; text-anchor:middle;}
+.tech-cue{background:var(--mark-soft); border:1px solid var(--mark-line); border-radius:12px; padding:10px 13px;
+  font-weight:800; font-size:14px; color:var(--mark); text-align:center; margin-bottom:12px;}
+.tech-steps{list-style:none; padding:0; margin:0 0 10px; font-size:13px; line-height:1.7;}
+.tech-steps li{padding-left:16px; position:relative;}
+.tech-steps li:before{content:"•"; position:absolute; left:2px; color:var(--mark); font-weight:900;}
+.tech-mistake{font-size:12.5px; color:var(--danger); margin-bottom:6px;}
+.tech-pass{font-size:12.5px; color:var(--good); font-weight:700; margin-bottom:14px;}
+.tech-close{width:100%; padding:13px; border-radius:13px; border:1px solid var(--line); background:transparent;
+  color:var(--chalk); font-weight:700; font-size:14px;}
+.manual-card{background:var(--riser); border:1px solid var(--line2); border-radius:14px; padding:14px; margin-bottom:12px;}
+.manual-card.integ{border-color:var(--mark-line); background:linear-gradient(180deg, var(--mark-soft), var(--riser) 40%);}
+.manual-head{display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:8px;}
+.manual-name{font-weight:800; font-size:14.5px;}
+.manual-tags{font-size:10.5px; color:var(--dust); white-space:nowrap; flex-shrink:0;}
+.manual-pose{width:88px; height:88px; margin:0 auto 10px; background:var(--void); border-radius:12px;
+  display:flex; align-items:center; justify-content:center;}
+.manual-pose svg{width:76px; height:76px;}
+.manual-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; margin-top:4px;}
+.mf-k{font-size:10.5px; color:var(--dust); font-weight:700; margin-bottom:2px;}
+.mf-v{font-size:12.5px; line-height:1.5;}
+.manual-steps{list-style:none; padding:0; margin:4px 0 0; font-size:12.5px; line-height:1.6;}
+.manual-steps li{padding-left:14px; position:relative;}
+.manual-steps li:before{content:"•"; position:absolute; left:1px; color:var(--mark); font-weight:900;}
+.manual-strip{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; padding-top:12px; border-top:1px solid var(--line2);}
+
 /* ---------- 休息計時：環形 ---------- */
 .timer-overlay{position:fixed; inset:0; z-index:100; display:flex; flex-direction:column;
   align-items:center; justify-content:center; background:var(--void);
@@ -3452,11 +3497,9 @@ function bindEvents(){
       else if(act==='vbPickVersion'){ state.vbVersion = Number(el.dataset.v); render(); }
       else if(act==='vbStart'){
         const day = state.vbDay || vbNextSuggestedDay();
-        const version = state.vbVersion || 10;
-        const lvl = vbEffectiveLevel(day);
         state.vbSession = {
-          id:'VB_'+Date.now(), kind:'volleyball', mode:'volleyball', date:todayISO(), day, vbVersion:version, vbLevel:lvl,
-          vbExercises: vbBuildExercises(day, version), exercises:[], startTime: Date.now(), endTime:null,
+          id:'VB_'+Date.now(), kind:'volleyball', program:'spike', mode:'volleyball', date:todayISO(), day,
+          vbExercises: spikeItemsFor(day), exercises:[], startTime: Date.now(), endTime:null,
           note:'', vbFeel:null, backfill:false
         };
         state.screen='vbActive'; render();
@@ -3466,6 +3509,11 @@ function bindEvents(){
         state.vbSession.vbExercises[i].done = !state.vbSession.vbExercises[i].done;
         if(navigator.vibrate) navigator.vibrate(12);
         render();
+      }
+      else if(act==='vbShowTech'){ showTechSheetOverlay(Number(el.dataset.day)); }
+      else if(act==='vbGotoManual'){
+        state.vbSub = 'manual'; render();
+        setTimeout(()=>{ const t=document.getElementById('manual-day-'+el.dataset.day); if(t) t.scrollIntoView({behavior:'smooth', block:'start'}); }, 60);
       }
       else if(act==='vbCancelActive'){
         if(confirm('要放棄這次進行中的排球訓練嗎？未儲存的內容會消失。')){
@@ -3853,6 +3901,388 @@ const VB_DRILLS15 = [
   {skill:'收操', name:'收操＋記錄', min:1, detail:'甩手放鬆，填寫今日訓練紀錄卡'}
 ];
 
+const POSES_TECH = {
+'elbow-high': `<svg viewBox="0 0 200 200"><g class="techfig">
+<circle cx="100" cy="46" r="13"/>
+<line x1="100" y1="59" x2="92" y2="110"/>
+<line x1="100" y1="59" x2="108" y2="110"/>
+<line x1="92" y1="110" x2="86" y2="160"/>
+<line x1="108" y1="110" x2="114" y2="160"/>
+<line x1="100" y1="70" x2="78" y2="90"/>
+<g><line x1="100" y1="68" x2="118" y2="40"/><line x1="118" y1="40" x2="112" y2="16"/><circle cx="118" cy="40" r="7" class="dot"/></g>
+</g></svg>`,
+'steps3': `<svg viewBox="0 0 200 200"><g class="techfig">
+<ellipse cx="40" cy="160" rx="14" ry="7" class="foot"/>
+<ellipse cx="95" cy="140" rx="14" ry="7" class="foot"/>
+<ellipse cx="150" cy="120" rx="16" ry="8" class="foot dot2"/>
+<path d="M40 160 Q70 150 95 140" class="arc"/>
+<path d="M95 140 Q120 130 150 120" class="arc"/>
+<text x="40" y="182" class="lbl">1</text><text x="95" y="162" class="lbl">2</text><text x="150" y="142" class="lbl">3</text>
+</g></svg>`,
+'penult': `<svg viewBox="0 0 200 200"><g class="techfig">
+<circle cx="100" cy="70" r="13"/>
+<line x1="100" y1="83" x2="80" y2="115"/>
+<line x1="100" y1="83" x2="118" y2="112"/>
+<line x1="80" y1="115" x2="70" y2="150"/><circle cx="80" cy="115" r="7" class="dot"/>
+<line x1="70" y1="150" x2="55" y2="168"/>
+<line x1="118" y1="112" x2="140" y2="140"/>
+<line x1="140" y1="140" x2="155" y2="168"/>
+<line x1="100" y1="90" x2="80" y2="80"/>
+<line x1="100" y1="90" x2="122" y2="95"/>
+</g></svg>`,
+'landing': `<svg viewBox="0 0 200 200"><g class="techfig">
+<circle cx="100" cy="60" r="12"/>
+<line x1="100" y1="72" x2="86" y2="105"/>
+<line x1="100" y1="72" x2="114" y2="105"/>
+<line x1="86" y1="105" x2="80" y2="140"/><line x1="114" y1="105" x2="120" y2="140"/>
+<circle cx="86" cy="105" r="7" class="dot"/><circle cx="114" cy="105" r="7" class="dot"/>
+<line x1="80" y1="140" x2="78" y2="160"/><line x1="120" y1="140" x2="122" y2="160"/>
+<path d="M40 160 L165 160" class="ground"/>
+</g></svg>`,
+'jump-arm': `<svg viewBox="0 0 200 200"><g class="techfig">
+<circle cx="100" cy="40" r="13"/>
+<line x1="100" y1="53" x2="90" y2="95"/><line x1="100" y1="53" x2="110" y2="95"/>
+<line x1="90" y1="95" x2="86" y2="130"/><line x1="110" y1="95" x2="116" y2="132"/>
+<line x1="100" y1="58" x2="122" y2="35"/><line x1="122" y1="35" x2="116" y2="10"/><circle cx="122" cy="35" r="7" class="dot"/>
+<line x1="100" y1="62" x2="78" y2="70"/>
+<path d="M40 150 L165 150" class="ground"/>
+</g></svg>`,
+'net-dist': `<svg viewBox="0 0 200 200"><g class="techfig">
+<path d="M150 20 L150 150" class="net"/>
+<ellipse cx="105" cy="152" rx="15" ry="7" class="foot dot2"/>
+<circle cx="105" cy="115" r="12"/>
+<line x1="105" y1="127" x2="98" y2="145"/><line x1="105" y1="127" x2="112" y2="145"/>
+<path d="M105 150 L150 150" class="arc"/>
+<text x="127" y="140" class="lbl" style="font-size:11px">一手臂</text>
+</g></svg>`,
+'contact': `<svg viewBox="0 0 200 200"><g class="techfig">
+<circle cx="95" cy="36" r="12"/>
+<line x1="95" y1="48" x2="88" y2="90"/><line x1="95" y1="48" x2="102" y2="90"/>
+<line x1="88" y1="90" x2="84" y2="124"/><line x1="102" y1="90" x2="108" y2="126"/>
+<line x1="95" y1="52" x2="128" y2="20"/><circle cx="128" cy="20" r="7" class="dot"/>
+<circle cx="138" cy="4" r="8" class="ball"/>
+<line x1="95" y1="58" x2="75" y2="72"/>
+<path d="M40 150 L165 150" class="ground"/>
+</g></svg>`
+};
+
+// ============================================================
+// 完整版「12-MIN 扣球重置訓練手冊」——單一資料來源。
+// 每天彈出的技術提醒（見 vbBuildExercises／techSheetHTML）
+// 只從這裡「引用」，不另外維護一份縮寫內容，避免兩邊內容分岔。
+// ============================================================
+const SPIKE_RESET = {
+  1: { title:'揮臂機制', sub:'ARM MECHANICS', focus:'高肘 + 肘先行 + 非擊球手',
+    drills:[
+      {name:'鏡前高肘定位 Mirror High-Elbow Hold', time:'60秒 ×4組', reps:'每組停5秒 ×6次', pose:'elbow-high',
+        purpose:'重新建立「肘高於肩」的引臂位置記憶，取代目前肘部低於肩線的繞背習慣。',
+        fixes:'對應問題 01・引臂繞背、肘低於肩', equipment:'鏡子（或手機自拍畫面）',
+        start:'面對鏡子站立，雙腳與肩同寬，擊球手自然下垂',
+        steps:['手肘直接從腰側抬到耳朵旁，不要往後繞','停在「肘略高於肩、手掌在頭後方」，停留5秒','檢查鏡中肩膀是否放鬆'],
+        rhythm:'上抬1秒→停5秒→放下1秒', feel:'肩膀放鬆，力量感覺在肩胛周圍而不是斜方肌',
+        cue:'肘尖指向天花板，不要往後畫圈', mistake:'聳肩／手肘往身體後方甩',
+        video:'手機側面45度角拍，檢查手肘是否維持在肩線以上',
+        pass:'連續6次都停滿5秒且肩膀無聳起', regress:'停留時間縮短為3秒，或降低手抬高度',
+        progress:'改為單手持0.5公斤小物（如水瓶）維持姿勢', transfer:'扣球空中引臂時，肘部起始位置就是這個姿勢'},
+      {name:'毛巾甩鞭揮臂 Towel Whip Swing', time:'90秒 ×3組', reps:'每組10下', pose:'whip',
+        purpose:'訓練「肘先行、前臂與手腕最後加速甩出」的鞭甩感，取代整隻手臂同時出力硬拉。',
+        fixes:'對應問題 01・手臂/肩膀硬拉、非鞭甩結構', equipment:'一條毛巾或短繩',
+        start:'站姿，毛巾一端握於擊球手，手臂放鬆下垂',
+        steps:['手肘先上抬到高肘位置並固定','只用前臂與手腕把毛巾向前甩出','感受尾端最後才「啪」一聲甩到底'],
+        rhythm:'肘先行（慢）→前臂甩出（快）', feel:'力量像鞭子一樣從肩傳到手，越到尾端速度越快',
+        cue:'讓毛巾尾端最後才發出聲音', mistake:'整隻手臂同時往前推、肘部跟著往前移動',
+        video:'正面或側面拍，聽甩動聲音出現的時間點是否在動作最後段',
+        pass:'連續10下都能明確聽到甩動聲，且肘部位置全程穩定', regress:'放慢速度，先不求甩動聲，只求肘先行順序正確',
+        progress:'改用短繩或彈力繩增加甩動阻力', transfer:'這就是空中揮臂「肘先行、前臂加速」的力量順序'},
+      {name:'非擊球手指向＋下拉 Off-arm Point & Pull-down', time:'60秒 ×4組', reps:'每組8次', pose:'offarm',
+        purpose:'讓非擊球手學會「舉起追蹤→停留→下拉」的完整任務，而不是隨意舉高又太早放下。',
+        fixes:'對應問題 05・非擊球手過早放下、timing不穩', equipment:'無',
+        start:'站姿準備動作，雙手自然放於身體兩側',
+        steps:['非擊球手向上舉起，手指明確指向假想球的位置','停留1秒，眼睛看著球與手指同一方向','配合軀幹旋轉，手肘用力向下拉，同時擊球手完成揮臂'],
+        rhythm:'舉起→停留1秒→下拉與揮臂同時發生', feel:'下拉的力量帶動身體旋轉，兩隻手臂是有關聯的',
+        cue:'手指指著球，直到下拉那一刻才放開', mistake:'非擊球手舉起後立刻掉下來、下拉時機比擊球手臂晚',
+        video:'背面或斜後方拍，觀察非擊球手是否在擊球手起跳前就已經放下',
+        pass:'8次中非擊球手都維持到接近擊球瞬間才下拉', regress:'先不加下拉，只練「舉起＋停留」',
+        progress:'加入輕跳，維持非擊球手動作不變形', transfer:'接球後助跑到起跳全程，非擊球手都應該持續指向球，直到下拉那一刻'}
+    ],
+    integration:{name:'分解式揮臂 30→60→80% Graduated Dry Swing', time:'2分鐘', reps:'30%×5、60%×5、80%×5', pose:'jump-arm',
+      purpose:'把高肘、鞭甩、非擊球手三個元素在無球狀態下串起來，用漸進速度確認動作不跑掉。',
+      fixes:'對應問題 01、05（整合）', equipment:'無', start:'站姿，模擬扣球準備動作',
+      steps:['30%力量完整做一次全流程','確認正確後60%重複','動作仍正確才進到80%力量'],
+      rhythm:'每個力量等級之間都要停下來檢查', feel:'力量越大，動作結構應該完全不變，只有速度不同',
+      cue:'速度可以變，姿勢不能變', mistake:'一開始就用大力量做、80%時肘部又開始往後繞',
+      video:'側面＋背面各錄一次80%力量的版本，對照Drill 1–3的姿勢',
+      pass:'80%力量時，高肘與非擊球手timing都還維持標準', regress:'只做到60%力量，不勉強上80%',
+      progress:'加入一小步助跑再做80%揮臂', transfer:'下週把動作帶到球場前，最後一次無球確認的機會'}
+  },
+  2: { title:'助跑節奏', sub:'APPROACH TIMING', focus:'第一步 + 三步／四步 + 節奏一致性',
+    drills:[
+      {name:'地面腳印三步助跑定位', time:'90秒 ×4組', reps:'每組5次', pose:'steps3',
+        purpose:'用地板標記固定「左-右-左」三步助跑的落點與距離，取代目前每次步數、距離都不一樣的狀況。',
+        fixes:'對應問題 02・助跑距離不固定', equipment:'3段膠帶或粉筆線、地板空間約3公尺',
+        start:'站在第一個標記點，面向假想球網',
+        steps:['依「左→右→左」踩過三個標記點','第三步（左腳）確實踩穩＝煞車步','回到起點，重複'],
+        rhythm:'第一步稍慢、第二步加速、第三步最快最用力踩穩', feel:'最後一步應該感覺像「煞車」，不是隨意踏一下',
+        cue:'第三步踩下去要聽到清楚的腳步聲', mistake:'三步節奏一樣快、最後一步踩不穩',
+        video:'側面拍攝，檢查三個標記點的步距是否一致',
+        pass:'連續5次都準確踩在三個標記點上，且第三步明顯用力', regress:'先用走的練習踩點順序，不求速度',
+        progress:'拿掉地板標記，靠自己步感重複同樣距離', transfer:'這是接球後啟動助跑的固定版本，之後直接套用在真實接球情境'},
+      {name:'口令第一步啟動', time:'90秒 ×4組', reps:'每組8次', pose:'steps3',
+        purpose:'訓練「聽到訊號立刻啟動」的反射反應，取代目前判斷球時不自主變慢、遲疑才動的習慣。',
+        fixes:'對應問題 02・啟動遲疑、判斷球變慢', equipment:'手機計時器或口令',
+        start:'站姿準備，注意力放在即將出現的口令上',
+        steps:['設定手機每2–4秒隨機震動或播放提示音','訊號出現的當下，立刻邁出第一步','動完一步即可停下，重設'],
+        rhythm:'訊號→反應時間越短越好，目標低於0.3秒', feel:'像被口令「推」出去，而不是自己想清楚才動',
+        cue:'聽到就動，不要想', mistake:'聽到訊號後還遲疑一下才跨步、老是提前偷跑猜測時機',
+        video:'錄下畫面同時錄聲音，用慢動作比對聲音出現到腳離地的格數',
+        pass:'8次中至少6次反應時間在肉眼可見的「立即」範圍', regress:'訊號改成固定節奏，先建立動作本身',
+        progress:'訊號隨機化＋加入方向指示再啟動', transfer:'接球瞬間就是你的「口令」，目標是看到球被撥出的瞬間就啟動第一步'},
+      {name:'三步／四步切換', time:'2分鐘', reps:'三步5次+四步5次', pose:'steps3',
+        purpose:'練習依「剩餘時間」主動選擇三步或四步助跑，而不是隨機決定步數。',
+        fixes:'對應問題 02・步數不一致、缺乏判斷依據', equipment:'無／地板標記', start:'站在助跑起點',
+        steps:['時間充裕時做四步（右-左-右-左）','時間緊迫時做三步（左-右-左）','兩種都要在最後一步做出明確煞車'],
+        rhythm:'不論三步或四步，最後兩步永遠是「加速＋煞車」', feel:'三步和四步在最後一步的「煞停」感覺應該幾乎一樣',
+        cue:'不管幾步，最後一步都要煞停', mistake:'四步硬要切成三步練習時反而步伐混亂',
+        video:'背面拍攝，比較三步版與四步版最後一步的落地力度',
+        pass:'能依口頭指令即時切換步數，且最後一步都有明顯煞停', regress:'先固定只練三步，熟練後再加四步',
+        progress:'加入隨機口令，練習中途臨時切換步數決定', transfer:'比賽中依球的來球速度自行判斷用三步還是四步'}
+    ],
+    integration:{name:'節拍器助跑節奏 Metronome Approach Rhythm', time:'2分鐘', reps:'6組完整助跑', pose:'metronome',
+      purpose:'用節拍器把「控制→加速→煞車」的節奏數字化，建立穩定可重複的助跑節奏感。',
+      fixes:'對應問題 02（整合）', equipment:'節拍器App（手機）', start:'站在助跑起點，節拍器設定約100–110bpm',
+      steps:['跟著每一拍踩出一步','最後一步允許提前半拍，模擬「快速煞車」的加速感','完成助跑後自然停住，不需要跳躍'],
+      rhythm:'前段跟拍、最後一步搶拍', feel:'身體被節拍器「帶著走」，不用自己數步',
+      cue:'最後一步搶拍，其餘跟拍', mistake:'全程都跟拍、完全沒有最後加速感',
+      video:'側面錄影對照節拍器音效，檢查最後一步是否確實提前',
+      pass:'6組都能清楚做出「跟拍→最後搶拍」的節奏差異', regress:'降低bpm至80，先求步伐對拍準確',
+      progress:'提高bpm至120，或拿掉節拍器純靠記憶重現節奏', transfer:'這個節奏感會直接帶到DAY3的倒數第二步訓練'}
+  },
+  3: { title:'倒數第二步', sub:'PENULTIMATE STEP', focus:'重心下降 + 快速並步 + 水平轉垂直',
+    drills:[
+      {name:'Penultimate Step 重心下降', time:'90秒 ×4組', reps:'每組6次', pose:'penult',
+        purpose:'單獨拆出倒數第二步，練習重心快速下降、預載Stretch-Shortening Cycle的感覺。',
+        fixes:'對應問題 03・跑到定位後停頓、動能中斷', equipment:'無／地板標記', start:'小跑動2–3步後準備做倒數第二步',
+        steps:['跑動中，倒數第二步刻意加大步幅、重心明顯下降','感受該腳落地時膝髖同時彎曲吸收','立刻銜接最後一步向前煞車，不停留'],
+        rhythm:'倒數第二步：大步＋快速下降，幾乎不停留', feel:'像跳過一個小水窪，身體自然壓低又彈起，中間沒有停頓',
+        cue:'重心下降的同時，人還在往前移動', mistake:'重心下降後停頓一下才接下一步、步幅太小感覺不到下降',
+        video:'側面拍攝，觀察倒數第二步落地到下一步之間是否有肉眼可見的停頓',
+        pass:'6次中重心下降到下一步啟動之間沒有明顯停格', regress:'放慢整體速度，先求動作形狀正確',
+        progress:'加大跑動速度，維持下降銜接不中斷', transfer:'這一步就是你影片中「停0.5秒」發生的位置，先單獨修好它'},
+      {name:'Step-close 快速並步', time:'90秒 ×4組', reps:'每組8次', pose:'stepclose',
+        purpose:'訓練最後一步「快速並步」動作，讓雙腳能在極短時間內完成起跳準備。',
+        fixes:'對應問題 03・最後一步銜接起跳太慢', equipment:'無', start:'單腳在前的預備姿勢',
+        steps:['前腳落地的同時，後腳快速並上','並步時雙腳幾乎同時朝向起跳方向','停在起跳準備姿勢，檢查雙腳位置'],
+        rhythm:'並步要快，比日常走路快兩倍以上的速度感', feel:'兩腳幾乎是「啪」一聲同時到位，不是一前一後慢慢跟上',
+        cue:'並步要快到像被電到一樣', mistake:'後腳拖慢才跟上、並步後身體重心還在後面',
+        video:'正面或側面拍攝，計算前後腳落地的時間差',
+        pass:'前後腳落地時間差肉眼幾乎看不出來', regress:'先放慢速度練習並步的腳型，不求速度',
+        progress:'加上助跑後直接做並步，銜接更真實的情境', transfer:'這決定你起跳前的準備時間，並步越快，起跳點越準確'},
+      {name:'Slow-to-Fast Approach 漸速助跑', time:'2分鐘', reps:'6次完整助跑', pose:'steps3',
+        purpose:'練習整段助跑「慢→快→最快」的漸速節奏，取代目前跑完就完全停下來等球的模式。',
+        fixes:'對應問題 03・助跑後停頓等球', equipment:'無／地板標記', start:'助跑起點，面向假想球網',
+        steps:['前1–2步刻意放慢，帶有控制感','中段步伐明顯加速','倒數第二步與最後一步最快、最用力'],
+        rhythm:'慢→快→最快，是漸進式加速，不是等速跑到底再突然加速', feel:'整段助跑像一輛車慢慢加速到底，不是走過去再衝刺',
+        cue:'越跑越快，不要跑到定位才加速', mistake:'全程同一個速度、跑到位置後仍然停下來才進入最後兩步',
+        video:'側面拍攝整段助跑，檢查最後兩步前是否還有靜止不動的畫面',
+        pass:'6次中都看不到「完全靜止等待」的畫面，速度呈現漸進感', regress:'先分成兩段練習再合併',
+        progress:'加入真實接球後立刻啟動漸速助跑', transfer:'這是直接修正你影片中「跑到停0.5秒」問題的核心drill'}
+    ],
+    integration:{name:'Approach-to-Stick Landing', time:'2分鐘', reps:'6次', pose:'landing',
+      purpose:'把「漸速助跑＋倒數第二步下降＋快速並步」串起來，最後用穩定落地取代真正跳躍。',
+      fixes:'對應問題 03（整合）', equipment:'無／軟墊（可選）', start:'助跑起點',
+      steps:['完整做一次「慢→快→最快」助跑','倒數第二步重心下降，不停頓','快速並步進入起跳準備姿勢，維持2秒平衡'],
+      rhythm:'助跑漸速不中斷，最後定住而不是跳起', feel:'整個過程像一次「準備要跳」但最後選擇不跳，身體仍保持順暢',
+      cue:'跑到最後不是停，是準備', mistake:'最後仍然出現明顯停頓、並步後重心後仰站不穩',
+      video:'側面完整錄下助跑到定住的全程，檢查是否有停格畫面',
+      pass:'6次都能順暢完成，且最後定住能維持平衡2秒', regress:'縮短助跑距離，只做最後兩步到定住',
+      progress:'改為助跑到真正起跳，確認動作依然順暢', transfer:'這是DAY4加入真正跳躍前的最後一次節奏確認'}
+  },
+  4: { title:'起跳與落地', sub:'TAKEOFF & LANDING', focus:'起跳位置 + 膝蓋控制 + 落地穩定',
+    drills:[
+      {name:'Landing Stick 落地穩定', time:'90秒 ×4組', reps:'每組6次', pose:'landing',
+        purpose:'練習落地時膝蓋對齊腳尖、雙腳穩定吸收衝擊，改善落地膝蓋輕微內夾的傾向。',
+        fixes:'對應問題 04・落地膝蓋內夾', equipment:'無／軟墊（可選）', start:'小幅度雙腳垂直跳起的預備姿勢',
+        steps:['雙腳小幅跳起（離地即可）','落地時膝蓋彎曲吸收，方向對準腳尖','定住不動，維持平衡2秒'],
+        rhythm:'跳起輕、落地穩、定住2秒', feel:'落地那一刻膝蓋往腳尖方向下壓，而不是往內併攏',
+        cue:'落地時膝蓋對準第二根腳趾', mistake:'落地雙膝往內夾、上半身前傾失去平衡',
+        video:'正面拍攝，檢查落地瞬間膝蓋與腳尖是否同一直線',
+        pass:'6次落地都能維持膝蓋對齊且穩定2秒', regress:'改成雙腳不離地，只做「下蹲吸收」的動作模式',
+        progress:'改成單腳跳單腳落地', transfer:'這是扣球落地那一刻的安全基礎，練穩了才加高度'},
+      {name:'Snap-down 快速下蹲上拉', time:'90秒 ×4組', reps:'每組8次', pose:'penult',
+        purpose:'訓練快速下蹲、立刻向上蹬地的爆發銜接，強化起跳瞬間的反應速度。',
+        fixes:'對應問題 03、04・起跳爆發銜接', equipment:'無', start:'站姿，雙腳與肩同寬',
+        steps:['快速下蹲到約1/4深度','立刻向上蹬地跳起（小幅度即可）','落地時回到穩定站姿'],
+        rhythm:'下蹲要快，蹬地要更快，中間幾乎沒有停留', feel:'像被地板彈起來一樣，下蹲只是為了立刻彈起',
+        cue:'下蹲是為了彈起，不是為了停留', mistake:'下蹲後停頓才起跳、跳躍時膝蓋內夾',
+        video:'側面拍攝，檢查下蹲最低點到離地之間的時間是否夠短',
+        pass:'8次都能感受到明顯的「彈起」而非「先蹲穩再跳」', regress:'降低下蹲深度，減少跳躍高度',
+        progress:'加入一步助跑後接Snap-down', transfer:'這個銜接速度會直接影響你助跑最後一步到起跳的流暢度'},
+      {name:'起跳距離定位 Takeoff Spot Marker', time:'90秒 ×4組', reps:'每組5次', pose:'net-dist',
+        purpose:'用地板標記固定一個離網適當距離的起跳點，避免起跳位置每次都不一樣、有時太靠近網。',
+        fixes:'對應問題 04・起跳點離網太近', equipment:'膠帶模擬網線＋起跳點標記', start:'模擬助跑起點，面向膠帶「網線」',
+        steps:['設定膠帶為球網位置','在距離網約一個手臂延伸長度處貼起跳點標記','三步助跑確認最後一步落在標記點附近'],
+        rhythm:'助跑對齊固定距離，不因為緊張而衝太近網', feel:'起跳後手臂往下扣仍有空間，不會感覺網就在手邊',
+        cue:'最後一步踩在標記點，不要衝過去', mistake:'助跑衝太快導致煞不住、越過標記點才起跳',
+        video:'側面拍攝，測量起跳點與「網線」膠帶的距離是否穩定',
+        pass:'5次起跳點都落在標記點前後15公分內', regress:'縮短助跑距離，降低衝向網的速度',
+        progress:'加快助跑速度後仍能準確踩點', transfer:'球場上用同樣邏輯抓「離網一手臂」的起跳距離感'}
+    ],
+    integration:{name:'小幅 Approach Jump 完整銜接', time:'2分鐘', reps:'6次', pose:'jump-arm',
+      purpose:'把助跑、倒數第二步、並步、起跳、落地第一次完整串起來，但用小幅度跳躍降低居家噪音與負荷。',
+      fixes:'對應問題 03、04（整合）', equipment:'膠帶標記', start:'助跑起點',
+      steps:['漸速助跑','倒數第二步下降＋快速並步','小幅度垂直跳起（不用全力）','落地穩定，膝蓋對齊腳尖'],
+      rhythm:'助跑不停頓→並步快→跳躍小幅→落地穩', feel:'整套動作一氣呵成，跳躍高度不是重點，流暢度才是',
+      cue:'流暢地跳，不是用力地跳', mistake:'又回到「跑到停」的舊習慣、落地後重心不穩需要跨步才能站穩',
+      video:'側面完整錄影，對照Day3的漸速助跑與今天的落地穩定度',
+      pass:'6次都能流暢完成整段動作，落地不需額外跨步', regress:'拿掉跳躍，只做到並步定住',
+      progress:'逐步增加跳躍高度，同時維持動作品質不變形', transfer:'這就是DAY5加入真正扣球前的完整骨架'}
+  },
+  5: { title:'完整扣球整合', sub:'FULL SPIKE INTEGRATION', focus:'助跑→起跳→非擊球手→高肘→揮臂→落地',
+    drills:[
+      {name:'無球完整助跑＋揮臂 Dry Full Approach + Swing', time:'2分鐘', reps:'6次', pose:'jump-arm',
+        purpose:'把DAY1–4的所有元素在無球狀態下完整串成一次扣球動作。',
+        fixes:'對應問題 01–04（整合）', equipment:'膠帶標記助跑與起跳點', start:'助跑起點，面向模擬網線',
+        steps:['漸速助跑三步','非擊球手同步舉起指向假想球','倒數第二步下降＋快速並步起跳','空中高肘揮臂＋非擊球手下拉','落地穩定，膝蓋對齊腳尖'],
+        rhythm:'整段動作一次到底，不分段停頓', feel:'像把前四天分開練的東西，第一次真的合體',
+        cue:'一次到底，中間不停', mistake:'某一段（通常是助跑到起跳之間）又出現舊的停頓習慣',
+        video:'側面＋背面各錄3次，用First Visible Breakdown找第一個跑掉的環節',
+        pass:'6次中至少4次全程順暢、找不到明顯停頓或姿勢跑掉', regress:'拆回DAY4整合難度（小幅跳），先求流暢再求完整力量',
+        progress:'加入自拋球增加真實感', transfer:'這就是完整的居家版扣球動作，下一步就是搬到球場'},
+      {name:'自拋球助跑攻擊 Self-Toss Approach Attack', time:'2分鐘', reps:'8次', pose:'contact',
+        purpose:'加入真球練習判斷時機與啟動，同時觀察「口令第一步啟動」的反應能力是否已內化。',
+        fixes:'對應問題 02、03・判斷球啟動時機', equipment:'排球、足夠淨空的室內空間', start:'手持球站在助跑起點',
+        steps:['把球輕拋向上前方（略高於自己站立摸高點）','球一離手立刻啟動漸速助跑','倒數第二步＋並步＋小幅起跳','空中做出完整高肘揮臂動作'],
+        rhythm:'球離手＝啟動訊號，不等球落下才動', feel:'跟DAY2的口令drill一樣，是「球出手就動」的反射',
+        cue:'球一出手，腳就動', mistake:'又回到等球接近最高點才啟動助跑的舊習慣',
+        video:'側面錄影，計算「球離手」到「第一步啟動」之間的格數',
+        pass:'8次中至少6次啟動延遲肉眼可見地縮短', regress:'拋球高度降低、拋球位置更靠近自己，縮短判斷難度',
+        progress:'請同伴從不同角度、不同高度拋球，增加不確定性', transfer:'這是最接近「接球後助跑扣球」情境的居家版本'},
+      {name:'Wall Target 揮臂方向控制', time:'90秒 ×3組', reps:'每組8次', pose:'whip',
+        purpose:'用牆面目標練習揮臂方向的一致性，確認高肘與鞭甩動作在有明確目標時依然穩定。',
+        fixes:'對應問題 01・擊球方向/穩定性確認', equipment:'牆面、膠帶貼一個目標點、排球', start:'面對牆壁約2–3公尺，站姿準備',
+        steps:['小幅起跳或原地做完整揮臂','目標打向牆上膠帶標記','觀察球是否穩定打在目標附近，調整站位角度後重複'],
+        rhythm:'動作節奏與Day1揮臂drill一致，只是加上方向目標', feel:'揮臂結構不變，只是多了一個「打得準不準」的回饋',
+        cue:'肘先行的路徑不變，只是這次要瞄準', mistake:'為了打準而又縮短揮臂路徑改用手腕硬打',
+        video:'正面錄影，統計8次中球落在目標周圍的次數',
+        pass:'8次中至少5次落在目標周圍，且揮臂路徑維持高肘', regress:'拉近牆面距離，降低方向控制難度',
+        progress:'縮小目標範圍或拉遠距離', transfer:'球場上，這個穩定度會反映在你扣球是否常常打外或打網'}
+    ],
+    integration:{name:'全流程錄影自我評分 Full Sequence Self-Score', time:'2分鐘', reps:'3次完整重複', pose:'contact',
+      purpose:'錄下三次完整動作，用First Visible Breakdown找出本週最需要優先處理的一個環節。',
+      fixes:'整合五大問題，銜接下週循環', equipment:'排球、手機', start:'助跑起點',
+      steps:['自拋球啟動完整動作','側面錄一次、背面錄一次，共3次完整重複','依動作鏈順序檢查找第一個出現的錯誤'],
+      rhythm:'不特別求快或求力量，求「完整且真實」', feel:'像正式比賽前最後一次自我檢查，誠實記錄現況',
+      cue:'只找第一個出現的錯誤', mistake:'只看結果沒有依動作鏈順序回放檢查',
+      video:'側面看助跑節奏與倒數第二步；背面看腳步、揮臂與非擊球手',
+      pass:'能明確指出今天最需要優先處理的一個環節並寫下', regress:'只錄背面一次，先求有記錄習慣',
+      progress:'找同伴或教練一起看影片，交叉確認判斷是否正確', transfer:'這一步的結論，決定你下週五日循環時哪一天要特別加強'}
+  }
+};
+
+// VB 7 日循環 -> 完整手冊的對應（每天只挑 1 項訊號動作放進當日清單，
+// 完整內容一律從 SPIKE_RESET 取用，不另外重寫）
+const VB_TECH_MAP = {
+  1:{day:1, kind:'drill', idx:0, min:2}, 2:{day:2, kind:'drill', idx:1, min:2},
+  3:{day:3, kind:'drill', idx:2, min:2}, 4:{day:4, kind:'drill', idx:0, min:2},
+  5:{day:5, kind:'drill', idx:0, min:3}, 6:{day:4, kind:'drill', idx:2, min:2},
+  7:{day:5, kind:'integration', min:2}
+};
+function getTechFor(vbDay){
+  const m = VB_TECH_MAP[vbDay];
+  if(!m) return null;
+  const sd = SPIKE_RESET[m.day];
+  const item = m.kind==='integration' ? sd.integration : sd.drills[m.idx];
+  return Object.assign({}, item, {min:m.min, sday:m.day});
+}
+
+function techSheetHTML(vbDay){
+  const t = getTechFor(vbDay);
+  if(!t) return '';
+  return `
+    <div class="tech-pose">${POSES_TECH[t.pose]||''}</div>
+    <div style="text-align:center; font-weight:800; font-size:16px; margin-bottom:2px">${t.name}</div>
+    <div class="muted" style="text-align:center; font-size:12px; margin-bottom:12px">完整手冊 DAY ${t.sday} ・ ${t.min} 分鐘</div>
+    <div class="tech-cue">${t.cue}</div>
+    <button class="btn btn-primary" data-action="vbOpenManualDrill" data-day="${t.sday}" style="width:100%; margin-top:4px">查看完整說明 →</button>
+    <button class="tech-close" id="techCloseBtn" style="margin-top:8px">關閉</button>
+  `;
+}
+function showTechSheetOverlay(vbDay){
+  const overlay = document.createElement('div');
+  overlay.className = 'tech-overlay';
+  overlay.id = 'techOverlay';
+  overlay.innerHTML = `<div class="tech-sheet">${techSheetHTML(vbDay)}</div>`;
+  overlay.onclick = (e)=>{ if(e.target===overlay) closeTechSheet(); };
+  document.body.appendChild(overlay);
+  const btn = document.getElementById('techCloseBtn');
+  if(btn) btn.onclick = closeTechSheet;
+  const gotoBtn = overlay.querySelector('[data-action="vbOpenManualDrill"]');
+  if(gotoBtn){
+    gotoBtn.onclick = ()=>{
+      const day = gotoBtn.dataset.day;
+      closeTechSheet();
+      state.vbSub = 'manual';
+      render();
+      setTimeout(()=>{ const t=document.getElementById('manual-day-'+day); if(t) t.scrollIntoView({behavior:'smooth', block:'start'}); }, 60);
+    };
+  }
+}
+function closeTechSheet(){ const o=document.getElementById('techOverlay'); if(o) o.remove(); }
+
+function manualDrillCard(d, isIntegration){
+  return `
+    <div class="manual-card ${isIntegration?'integ':''}">
+      <div class="manual-head">
+        <div class="manual-name">${d.name}</div>
+        <div class="manual-tags">${d.time} ・ ${d.reps}</div>
+      </div>
+      <div class="manual-pose">${POSES_TECH[d.pose]||''}</div>
+      <div class="manual-grid">
+        <div><div class="mf-k">目的</div><div class="mf-v">${d.purpose}</div></div>
+        <div><div class="mf-k">修正的排球問題</div><div class="mf-v">${d.fixes}</div></div>
+        <div><div class="mf-k">器材</div><div class="mf-v">${d.equipment}</div></div>
+        <div><div class="mf-k">起始姿勢</div><div class="mf-v">${d.start}</div></div>
+      </div>
+      <div class="mf-k" style="margin-top:8px">執行步驟</div>
+      <ul class="manual-steps">${d.steps.map(s=>'<li>'+s+'</li>').join('')}</ul>
+      <div class="manual-grid" style="margin-top:6px">
+        <div><div class="mf-k">節奏</div><div class="mf-v">${d.rhythm}</div></div>
+        <div><div class="mf-k">正確感覺</div><div class="mf-v">${d.feel}</div></div>
+      </div>
+      <div class="tech-cue" style="margin-top:10px">${d.cue}</div>
+      <div class="manual-grid">
+        <div><div class="mf-k">常見錯誤</div><div class="mf-v" style="color:var(--danger)">${d.mistake}</div></div>
+        <div><div class="mf-k">手機錄影怎麼看</div><div class="mf-v">${d.video}</div></div>
+      </div>
+      <div class="manual-strip">
+        <div><div class="mf-k">PASS 標準</div><div class="mf-v">${d.pass}</div></div>
+        <div><div class="mf-k">退階版本</div><div class="mf-v">${d.regress}</div></div>
+        <div><div class="mf-k">進階版本</div><div class="mf-v">${d.progress}</div></div>
+        <div><div class="mf-k">球場轉移</div><div class="mf-v">${d.transfer}</div></div>
+      </div>
+    </div>`;
+}
+function renderVbManual(){
+  return `
+    <div class="vb-card" style="text-align:center">
+      <div class="tag">12-MIN VOLLEYBALL SPIKE RESET</div>
+      <p class="muted" style="font-size:12px; margin-top:6px">完整 5 日居家扣球動作改善手冊，每天的「今天」清單只是從這裡挑一項提醒——這裡才是完整內容。</p>
+    </div>
+    ${[1,2,3,4,5].map(day=>{
+      const sd = SPIKE_RESET[day];
+      return `
+      <div id="manual-day-${day}" class="vb-card">
+        <div class="tag">DAY ${day} ・ ${sd.sub}</div>
+        <h2 style="margin:6px 0 2px">${sd.title}</h2>
+        <div class="muted" style="font-size:12.5px; margin-bottom:10px">核心：${sd.focus}</div>
+        ${sd.drills.map(d=>manualDrillCard(d,false)).join('')}
+        <div class="label" style="margin:10px 0 6px">整合動作</div>
+        ${manualDrillCard(sd.integration,true)}
+      </div>`;
+    }).join('')}
+  `;
+}
+
 // 目前攻擊 Level 由使用者在「等級」頁自己手動調整——這裡只負責 Day 5
 // 「固定練旋轉控制」的例外：還沒練到 L4 就先做目前的 Level，不硬跳級。
 function vbEffectiveLevel(day){
@@ -3865,7 +4295,7 @@ function vbBuildExercises(day, version){
   const base = version===15 ? VB_DRILLS15 : VB_DAYS[day].drills10;
   const lvl = vbEffectiveLevel(day);
   const L = VB_LEVELS[lvl];
-  return base.map((it,i)=>{
+  const mapped = base.map((it,i)=>{
     if(it.attack){
       return {id:'x'+i, skill:it.skill, name:'L'+lvl+'｜'+L.name,
         detail:L.detail+'（'+L.reps+' × '+L.sets+'，休息 '+L.rest+'）'+(it.note?'　'+it.note:''),
@@ -3873,12 +4303,27 @@ function vbBuildExercises(day, version){
     }
     return {id:'x'+i, skill:it.skill, name:it.name, detail:it.detail, min:it.min, done:false, attack:false};
   });
+  // 融合扣球「助跑／揮臂／起跳落地」技術——內容單一來源在 SPIKE_RESET，這裡只挑一項
+  const t = getTechFor(day);
+  if(t){
+    const techItem = {id:'xtech', skill:'技術', name:t.name, detail:t.cue, min:t.min, done:false, tech:true, day, sday:t.sday};
+    const insertAt = mapped.length ? mapped.length-1 : 0;
+    mapped.splice(insertAt, 0, techItem);
+  }
+  return mapped;
+}
+function spikeItemsFor(day){
+  const sd = SPIKE_RESET[day];
+  const items = sd.drills.map((d,i)=>({id:'d'+i, name:d.name, time:d.time, reps:d.reps, cue:d.cue, pose:d.pose, done:false, integ:false}));
+  items.push({id:'integ', name:sd.integration.name, time:sd.integration.time, reps:sd.integration.reps,
+    cue:sd.integration.cue, pose:sd.integration.pose, done:false, integ:true});
+  return items;
 }
 function vbNextSuggestedDay(){
-  const vs = DB.sessions.filter(s=>s.kind==='volleyball').sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0));
+  const vs = DB.sessions.filter(s=>s.kind==='volleyball' && s.program==='spike').sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0));
   if(!vs.length) return 1;
   const last = vs[vs.length-1];
-  return last.day>=7 ? 1 : last.day+1;
+  return last.day>=5 ? 1 : last.day+1;
 }
 function vbWeekNumber(dateISO){
   if(!DB.volleyball.startDate) return 1;
@@ -3888,17 +4333,10 @@ function vbWeekNumber(dateISO){
   return Math.max(1, Math.min(20, Math.floor(days/7)+1));
 }
 // 這個 App 從不自動幫使用者做決定——這裡只回傳「符合了哪些條件」的文字清單，
-// 用來在畫面上顯示提醒，升不升級／要不要排輕量週永遠由使用者自己按。
+// 用來在畫面上顯示提醒，要不要排輕量週永遠由使用者自己判斷（對應手冊 STOP→REDUCE→REGRESS）。
 function vbDeloadFlags(){
-  const tests = (DB.volleyball.selftests||[]).slice().sort((a,b)=>a.date<b.date?-1:1);
   const checkins = (DB.volleyball.checkins||[]).slice().sort((a,b)=>a.date<b.date?-1:1);
   const flags = [];
-  if(tests.length>=2){
-    const last2 = tests.slice(-2);
-    if(last2.every(t=>Number(t.attackSelf)<=2)) flags.push('攻擊包球自評連續 2 次 ≤ 2 分');
-    const score = t=> (Number(t.rotation)||0)+(Number(t.lowhand)||0)+(Number(t.judge)||0);
-    if(score(last2[1]) < score(last2[0])) flags.push('自我測試分數比上次下滑');
-  }
   if(checkins.length){
     const c = checkins[checkins.length-1];
     if(Number(c.soreness)>=4) flags.push('最近一次回報痠痛自評偏高（≥4）');
@@ -3908,18 +4346,19 @@ function vbDeloadFlags(){
   if(vs.length){
     const lastDate = vs.map(s=>s.date).sort().reverse()[0];
     const gapDays = Math.floor((new Date(todayISO())-new Date(lastDate))/86400000);
-    if(gapDays>=10) flags.push('已經超過 10 天沒有排球訓練紀錄');
+    if(gapDays>=10) flags.push('已經超過 10 天沒有扣球重置訓練紀錄');
   }
   return flags;
 }
 function vbLastN(n){
   return DB.sessions.filter(s=>s.kind==='volleyball').sort((a,b)=>a.date<b.date?-1:1).slice(-n);
 }
-// 統一的「這筆紀錄要顯示什麼名字／副標」——同時給重訓跟排球用，
-// 這樣既有的三處（Home 本週／History 時間軸／SessionDetail）只要呼叫這個，
-// 就不會因為 s.mode==='volleyball' 去查 PROGRAM_GYM/HOME 而整頁掛掉。
+// 統一的「這筆紀錄要顯示什麼名字／副標」——同時給重訓跟排球用。
+// program==='spike' 是新的扣球重置紀錄；沒有這個欄位的是舊版排球技術訓練的歷史紀錄，
+// 兩者分開判斷，讀舊資料時完全不會去查新版才有的 SPIKE_RESET 以外的東西，不會壞掉。
 function sessionLabel(s){
   if(s.kind==='volleyball'){
+    if(s.program==='spike'){ const sd=SPIKE_RESET[s.day]; return '🏐 '+(sd?sd.title:'扣球重置訓練'); }
     const d = VB_DAYS[s.day];
     return '🏐 '+(d?d.focus:'排球技術')+'（'+(s.vbVersion||10)+' 分鐘）';
   }
@@ -3929,91 +4368,63 @@ function sessionMeta(s){
   if(s.kind==='volleyball'){
     const ex = s.vbExercises||[];
     const done = ex.filter(x=>x.done).length;
+    if(s.program==='spike') return done+'/'+ex.length+' 項 · SPIKE RESET · DAY '+s.day;
     return done+'/'+ex.length+' 項 · VOLLEYBALL · L'+(s.vbLevel||1);
   }
   const sets = s.exercises.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0);
   return sets+' SETS · '+progShort(s.mode);
 }
 
-/* ---------------- render: 排球 hub（今天／等級／紀錄表／回報／說明）---------------- */
+/* ---------------- render: 排球 hub（今天／手冊／紀錄表／回報／說明）---------------- */
 function renderVb(){
   const sub = state.vbSub || 'today';
-  const tabs = [['today','今天'],['level','等級'],['log','紀錄表'],['checkin','回報'],['guide','說明']];
-  const tabHtml = `<div class="vb-seg">${tabs.map(t=>
+  const tabs = [['today','今天'],['manual','手冊'],['log','紀錄表'],['checkin','回報'],['guide','說明']];
+  const tabHtml = `<div class="vb-seg" style="flex-wrap:wrap">${tabs.map(t=>
     `<button data-action="vbSub" data-sub="${t[0]}" class="${sub===t[0]?'active':''}">${t[1]}</button>`).join('')}</div>`;
   let body = '';
   if(sub==='today') body = renderVbToday();
-  else if(sub==='level') body = renderVbLevel();
+  else if(sub==='manual') body = renderVbManual();
   else if(sub==='log') body = renderVbLog();
   else if(sub==='checkin') body = renderVbCheckin();
   else body = renderVbGuide();
-  return `<div class="pad"><h1>🏐 排球技術訓練</h1><p class="muted">居家低噪音排球技術訓練計畫 · 20 週</p></div>
+  return `<div class="pad"><h1>🏐 扣球重置訓練</h1><p class="muted">居家 5 日循環 · 接球→助跑→揮臂・每天 10–15 分鐘</p></div>
     <div class="pad" style="padding-top:0">${tabHtml}</div>
     <div class="pad" style="padding-top:12px">${body}</div>`;
 }
 function renderVbToday(){
   const flags = vbDeloadFlags();
   const day = state.vbDay || vbNextSuggestedDay();
-  const version = state.vbVersion || 10;
-  const d = VB_DAYS[day];
-  const lvl = vbEffectiveLevel(day);
-  const list = vbBuildExercises(day, version);
-  const totalMin = list.reduce((a,x)=>a+x.min,0);
+  const sd = SPIKE_RESET[day];
+  const items = spikeItemsFor(day);
   return `
-    ${flags.length ? `<div class="vb-banner warn">⚠ <div><b>建議看一下要不要排輕量週</b><br>${flags.map(f=>'· '+f).join('<br>')}<br><span class="muted" style="font-size:11.5px">這只是提醒，App 不會自動幫你改課表——判斷方式見「說明」分頁。</span></div></div>` : ''}
+    ${flags.length ? `<div class="vb-banner warn">⚠ <div><b>留意一下要不要放輕鬆練</b><br>${flags.map(f=>'· '+f).join('<br>')}<br><span class="muted" style="font-size:11.5px">這只是提醒，App 不會自動幫你改課表。</span></div></div>` : ''}
     <div class="vb-card">
       <div class="tag">選 DAY（建議：DAY ${vbNextSuggestedDay()}）</div>
-      <div class="vb-daygrid">${[1,2,3,4,5,6,7].map(n=>`
+      <div class="vb-daygrid" style="grid-template-columns:repeat(5,1fr)">${[1,2,3,4,5].map(n=>`
         <div class="vb-daybtn ${day===n?'active':''}" data-action="vbPickDay" data-day="${n}">
           <div class="n">D${n}</div>
         </div>`).join('')}</div>
-      <div class="muted" style="font-size:12.5px; margin-top:8px">${d.focus}</div>
+      <div class="muted" style="font-size:12.5px; margin-top:8px">${sd.title}・${sd.focus}</div>
     </div>
     <div class="vb-card">
-      <div class="tag">選版本</div>
-      <div class="vb-seg" style="margin-top:6px">
-        <button data-action="vbPickVersion" data-v="10" class="${version===10?'active':''}">10 分鐘</button>
-        <button data-action="vbPickVersion" data-v="15" class="${version===15?'active':''}">15 分鐘</button>
-      </div>
-    </div>
-    <div class="vb-card">
-      <div class="row between"><div class="tag">今天要做</div><span class="muted" style="font-size:12px">共 ${totalMin} 分鐘 · 目前 L${lvl}</span></div>
-      ${list.map(x=>`
+      <div class="tag">今天要做 · 約 10–15 分鐘</div>
+      ${items.map(x=>`
         <div class="vb-exrow">
           <div style="width:8px"></div>
           <div style="flex:1">
-            <div class="vb-exname">${x.name} <span class="muted" style="font-size:11px">${x.min}′</span></div>
-            <div class="vb-exdetail">${x.detail}</div>
+            <div class="vb-exname">${x.integ?'整合｜':''}${x.name} <span class="muted" style="font-size:11px">${x.time}</span></div>
+            <div class="vb-exdetail">${x.cue}</div>
+            <button class="tech-btn" data-action="vbGotoManual" data-day="${day}">📐 看完整內容＋示意圖</button>
           </div>
         </div>`).join('')}
     </div>
     <button class="btn btn-primary" data-action="vbStart">開始這次訓練</button>
   `;
 }
-function renderVbLevel(){
-  const lvl = DB.volleyball.level || 1;
-  return `
-    <div class="vb-card">
-      <div class="tag">目前攻擊 LEVEL</div>
-      <div class="vb-leveldots" style="margin-top:10px">
-        ${[1,2,3,4,5,6].map(n=>`<div class="vb-leveldot ${n===lvl?'active':(n<lvl?'done':'')}" data-action="vbSetLevel" data-lvl="${n}">L${n}</div>`).join('')}
-      </div>
-      <p class="muted" style="font-size:12.5px; margin-top:10px">點一個等級就切過去，App 不會自動幫你升級——進階／降階規則見「說明」分頁，什麼時候要跳全部由你自己判斷。</p>
-    </div>
-    <div class="vb-card">
-      <div class="tag">L${lvl}｜${VB_LEVELS[lvl].name}</div>
-      <p style="font-size:13.5px; margin-top:6px">${VB_LEVELS[lvl].detail}</p>
-      <div class="flow" style="margin-top:8px">
-        <div class="chip"><span class="label">次數</span><b>${VB_LEVELS[lvl].reps}</b></div>
-        <div class="chip"><span class="label">組數</span><b>${VB_LEVELS[lvl].sets}</b></div>
-        <div class="chip"><span class="label">休息</span><b>${VB_LEVELS[lvl].rest}</b></div>
-      </div>
-    </div>`;
-}
 function renderVbLog(){
   const sessions = DB.sessions.filter(s=>s.kind==='volleyball');
   if(!sessions.length){
-    return `<div class="empty">還沒有排球訓練紀錄。<br>到「今天」分頁開始第一次訓練，這裡就會自動長出 20 週紀錄表。</div>`;
+    return `<div class="empty">還沒有訓練紀錄。<br>到「今天」分頁開始第一次訓練，這裡就會自動長出紀錄表。</div>`;
   }
   if(!DB.volleyball.startDate) DB.volleyball.startDate = sessions.map(s=>s.date).sort()[0];
   const byWeekDay = {};
@@ -4033,7 +4444,7 @@ function renderVbLog(){
       <table class="loggrid"><thead><tr><th style="text-align:left">WEEK</th>${[1,2,3,4,5,6,7].map(d=>`<th>D${d}</th>`).join('')}</tr></thead>
       <tbody>${rows}</tbody></table>
     </div>
-    <p class="muted" style="font-size:11.5px">開始日：${DB.volleyball.startDate}（依第一次排球訓練紀錄自動決定）· 共 ${sessions.length} 次訓練</p>`;
+    <p class="muted" style="font-size:11.5px">D1–D5 是現在的扣球重置循環；D6／D7 若有點亮，是先前排球技術訓練留下的舊紀錄。開始日：${DB.volleyball.startDate}・共 ${sessions.length} 次訓練</p>`;
 }
 function renderVbCheckin(){
   const checkins = (DB.volleyball.checkins||[]).slice().sort((a,b)=>a.date<b.date?-1:1).reverse();
@@ -4042,7 +4453,7 @@ function renderVbCheckin(){
     <div class="vb-card">
       <div class="tag">每週回報</div>
       <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px">
-        <div><label class="vb-field">本週完成次數 / 7</label><input type="number" id="vbCiDone" min="0" max="7" placeholder="例如 5"></div>
+        <div><label class="vb-field">本週完成次數 / 5</label><input type="number" id="vbCiDone" min="0" max="7" placeholder="例如 4"></div>
         <div><label class="vb-field">平均睡眠（小時）</label><input type="number" id="vbCiSleep" step="0.5" placeholder="例如 7"></div>
         <div><label class="vb-field">體重 kg（非必要）</label><input type="number" id="vbCiWeight" step="0.1" placeholder=""></div>
         <div><label class="vb-field">精力自評 1–5</label><div class="vb-dotscale" id="vbCiEnergy" data-field="energy">${[1,2,3,4,5].map(n=>`<div class="d" data-val="${n}">${n}</div>`).join('')}</div></div>
@@ -4051,22 +4462,12 @@ function renderVbCheckin(){
         <button class="btn btn-primary" data-action="vbSaveCheckin">儲存本週回報</button>
       </div>
     </div>
-    <div class="vb-card">
-      <div class="tag">每週自我測試</div>
-      <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px">
-        <div><label class="vb-field">攻擊接觸中，成功產生目標旋轉幾次 / 10</label><input type="number" id="vbTRot" min="0" max="10"></div>
-        <div><label class="vb-field">低手接球中，球路穩定幾次 / 10</label><input type="number" id="vbTLow" min="0" max="10"></div>
-        <div><label class="vb-field">高低球判斷，判斷正確幾次 / 10</label><input type="number" id="vbTJudge" min="0" max="10"></div>
-        <div><label class="vb-field">攻擊包球自評 1–5</label><div class="vb-dotscale" id="vbTAttack" data-field="attackSelf">${[1,2,3,4,5].map(n=>`<div class="d" data-val="${n}">${n}</div>`).join('')}</div></div>
-        <button class="btn btn-primary" data-action="vbSaveSelftest">儲存本次測試</button>
-      </div>
-    </div>
     ${checkins.length ? `<div class="vb-card"><div class="tag">回報紀錄</div>${checkins.slice(0,6).map(c=>
       `<div style="padding:8px 0; border-top:1px solid var(--line2); font-size:12.5px">
-        <b>${c.date}</b> · 完成 ${c.done??'—'}/7 · 睡眠 ${c.sleep??'—'}h · 精力 ${c.energy??'—'} · 痠痛 ${c.soreness??'—'}
+        <b>${c.date}</b> · 完成 ${c.done??'—'} · 睡眠 ${c.sleep??'—'}h · 精力 ${c.energy??'—'} · 痠痛 ${c.soreness??'—'}
         ${c.note?`<div class="muted" style="margin-top:2px">${escapeHtml(c.note)}</div>`:''}
       </div>`).join('')}</div>` : ''}
-    ${tests.length ? `<div class="vb-card"><div class="tag">自我測試紀錄</div>${tests.slice(0,6).map(t=>
+    ${tests.length ? `<div class="vb-card"><div class="tag">舊版自我測試紀錄（排球技術訓練留下）</div>${tests.slice(0,6).map(t=>
       `<div style="padding:8px 0; border-top:1px solid var(--line2); font-size:12.5px">
         <b>${t.date}</b> · 旋轉 ${t.rotation}/10 · 低手 ${t.lowhand}/10 · 判斷 ${t.judge}/10 · 攻擊自評 ${t.attackSelf}/5
       </div>`).join('')}</div>` : ''}
@@ -4075,30 +4476,25 @@ function renderVbCheckin(){
 function renderVbGuide(){
   return `
     <div class="vb-card">
-      <div class="tag">進度規則</div>
+      <div class="tag">怎麼用</div>
       <ol style="margin:8px 0 0 18px; font-size:13px; line-height:1.9">
-        <li>同一次訓練中，當天所有動作都能穩定完成、動作品質良好 → 可視為當次「達標」</li>
-        <li>每週自我測試中，同一項目連續 2 週達到 8/10 以上 → 可以考慮進階到下一個 Level</li>
-        <li>攻擊手感每個 Level 至少練滿 2 週才進階，即使表現已達標，避免動作定型不足</li>
-        <li>表現退步，或自我測試連續 2 週低於 5/10 → 不進階，原 Level 多練一週</li>
-        <li>出現疼痛 → 立即降階或暫停該動作，等疼痛消除後再重新評估</li>
-        <li>每週固定同一天做自我測試與回報，是判斷進不進階的依據，不是憑感覺</li>
+        <li>「今天」選一天（DAY 1–5），每天固定 3 個技術 Drill ＋ 1 個整合動作</li>
+        <li>每個動作先看「📐 看完整內容＋示意圖」，練習前先弄懂重點再開始</li>
+        <li>練完 5 天回到 DAY 1，重複整個循環，速度／力量逐週往上加，姿勢跑掉就退回上一階段</li>
+        <li>動作品質下降時，降低次數／速度／高度，不要硬撐到力竭</li>
       </ol>
     </div>
     <div class="vb-card">
-      <div class="tag">卡關／該不該 Deload</div>
-      <p style="font-size:13px; margin-top:6px">符合以下任兩項以上，建議排一個輕量週（全部動作降一個 Level，或只做地基動作，暫停攻擊模組進階）：</p>
-      <ul style="margin:6px 0 0 18px; font-size:13px; line-height:1.9">
-        <li>連續 2 週自我測試分數下滑</li>
-        <li>攻擊包球自評連續 2 週 ≤ 2 分</li>
-        <li>明顯疲勞、注意力難以集中</li>
-        <li>手腕／手指／手肘出現超過訓練後 24 小時的痠痛</li>
-        <li>連續錯過 3 次以上排定的訓練</li>
-      </ul>
+      <div class="tag">找錯誤的順序：First Visible Breakdown</div>
+      <p style="font-size:13px; margin-top:6px; line-height:1.7">扣球感覺不對時，不要直接檢查手腕。依序回答：助跑 timing 對嗎？→ plant 對嗎？→ 起跳位置對嗎？→ 擊球點對嗎？→ 最後才看手部。永遠先修「第一個出現的錯誤」，一次只修一個問題。</p>
     </div>
     <div class="vb-card">
-      <div class="tag">7 天循環</div>
-      ${[1,2,3,4,5,6,7].map(n=>`<div style="padding:6px 0; font-size:13px"><b>DAY ${n}</b> · ${VB_DAYS[n].focus}</div>`).join('')}
+      <div class="tag">安全原則：STOP → REDUCE → REGRESS</div>
+      <p style="font-size:13px; margin-top:6px; line-height:1.7">若出現肩痛、手肘痛、腰痛、膝痛、阿基里斯腱痛或明顯踝部不適，不要用增加訓練量硬解決——先停止該動作，降低強度或退階，必要時尋求專業評估。</p>
+    </div>
+    <div class="vb-card">
+      <div class="tag">5 日循環</div>
+      ${[1,2,3,4,5].map(n=>`<div style="padding:6px 0; font-size:13px"><b>DAY ${n}</b> · ${SPIKE_RESET[n].title}（${SPIKE_RESET[n].focus}）</div>`).join('')}
     </div>`;
 }
 
@@ -4106,10 +4502,11 @@ function renderVbGuide(){
 function renderVbActive(){
   const s = state.vbSession;
   const doneN = s.vbExercises.filter(x=>x.done).length;
+  const sd = SPIKE_RESET[s.day];
   return `
     <div class="topbar"><div class="back" data-action="vbCancelActive">‹</div>
-      <div style="flex:1"><div class="label">DAY ${s.day} · ${s.vbVersion} 分鐘版</div>
-      <h1 style="font-size:20px">${VB_DAYS[s.day].focus}</h1></div></div>
+      <div style="flex:1"><div class="label">DAY ${s.day} · 扣球重置</div>
+      <h1 style="font-size:20px">${sd.title}</h1></div></div>
     <div class="pad">
       <p class="muted" style="font-size:12.5px">完成 ${doneN}/${s.vbExercises.length} 項</p>
       <div class="vb-card">
@@ -4117,8 +4514,9 @@ function renderVbActive(){
           <div class="vb-exrow">
             <div class="vb-checkbox ${x.done?'checked':''}" data-action="vbToggle" data-i="${i}"></div>
             <div style="flex:1">
-              <div class="vb-exname ${x.done?'done':''}">${x.name} <span class="muted" style="font-size:11px">${x.min}′</span></div>
-              <div class="vb-exdetail">${x.detail}</div>
+              <div class="vb-exname ${x.done?'done':''}">${x.integ?'整合｜':''}${x.name} <span class="muted" style="font-size:11px">${x.time}</span></div>
+              <div class="vb-exdetail">${x.cue}</div>
+              <button class="tech-btn" data-action="vbGotoManual" data-day="${s.day}">📐 看完整內容＋示意圖</button>
             </div>
           </div>`).join('')}
       </div>
@@ -4127,8 +4525,9 @@ function renderVbActive(){
 }
 function renderVbComplete(){
   const s = state.vbSession;
+  const sd = SPIKE_RESET[s.day];
   return `<div class="pad"><h1>訓練完成</h1>
-    <p class="muted">DAY ${s.day} · ${VB_DAYS[s.day].focus} · ${s.vbVersion} 分鐘版 · L${s.vbLevel}</p></div>
+    <p class="muted">DAY ${s.day} · ${sd.title}</p></div>
     <div class="pad">
       <label class="vb-field">今日感受</label>
       <div class="vb-seg" style="margin-bottom:12px">
@@ -4137,15 +4536,39 @@ function renderVbComplete(){
         <button data-action="vbFeel" data-f="困難" class="${state.vbFeel==='困難'?'active':''}">困難</button>
       </div>
       <label class="vb-field">備註</label>
-      <textarea id="vbNote" placeholder="今天的觸球感、攻擊手感⋯"></textarea>
+      <textarea id="vbNote" placeholder="今天助跑、揮臂、落地的感覺⋯"></textarea>
       <div style="height:14px"></div>
       <button class="btn btn-primary" data-action="vbSaveComplete">儲存這次紀錄</button>
     </div>`;
 }
 
+// 舊版排球技術訓練的歷史紀錄（沒有 program==='spike'）維持原本的顯示方式，
+// 完全不查新版才有的 SPIKE_RESET 內容，確保之前的紀錄永遠看得到、不會因為
+// 改版而出錯。新版紀錄則直接用 SPIKE_RESET 顯示完整資訊。
 function renderVbSessionDetail(s){
   const durMin = sessionDurationMin(s);
   const ex = s.vbExercises||[];
+  if(s.program==='spike'){
+    const sd = SPIKE_RESET[s.day];
+    return `
+      <div class="topbar"><div class="back" data-action="backHistory">‹</div>
+        <div style="flex:1; min-width:0"><div class="label">${s.date.replace(/-/g,'.')}${durMin?' · '+durMin+' 分鐘':''} · 扣球重置訓練${s.backfill?' · 補登':''}</div>
+        <h1 style="font-size:22px; overflow-wrap:break-word">${sessionLabel(s)}</h1></div></div>
+      <div class="readout">
+        <div><span class="label">DAY</span><b>${s.day}</b></div>
+        <div><span class="label">完成</span><b>${ex.filter(x=>x.done).length}/${ex.length}</b></div>
+      </div>
+      ${s.vbFeel?`<div class="tag tag-mid" style="margin-top:8px">今日感受：${s.vbFeel}</div>`:''}
+      <h3>動作清單</h3>
+      ${ex.map(x=>`
+        <div style="padding:10px 0; border-bottom:1px solid var(--line2); opacity:${x.done?1:.5}">
+          <div style="font-weight:700; font-size:14px">${x.done?'✓ ':'— '}${x.integ?'整合｜':''}${x.name}</div>
+          <div class="muted" style="font-size:12px; margin-top:2px">${x.cue||''}</div>
+        </div>`).join('')}
+      ${s.note ? `<h3>訓練筆記</h3><div class="note"><p style="font-size:14px; margin:0">${escapeHtml(s.note)}</p></div>` : ''}
+      <div style="height:20px"></div>`;
+  }
+  // ---- 以下是舊版排球技術訓練紀錄的顯示方式，原封不動保留 ----
   return `
     <div class="topbar"><div class="back" data-action="backHistory">‹</div>
       <div style="flex:1; min-width:0"><div class="label">${s.date.replace(/-/g,'.')}${durMin?' · '+durMin+' 分鐘':''} · 排球技術${s.backfill?' · 補登':''}</div>
